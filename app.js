@@ -96,10 +96,11 @@ const S = {
 };
 
 
-const buildPlanForUser = (diet, allergens, seed) => {
+const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set()) => {
   const compatible = ALL_RECIPES.filter(r =>
     !((r.incompatible || []).includes(diet)) &&
-    !(r.allergens || []).some(a => allergens.includes(a))
+    !(r.allergens || []).some(a => allergens.includes(a)) &&
+    !dislikedIds.has(r.id)
   );
   const pool = compatible.length >= 7 ? compatible : ALL_RECIPES;
   const base = seed === 0 ? PLAN_A : PLAN_B;
@@ -147,20 +148,13 @@ const STAPLES = [{
 }];
 
 // ─── Dynamic shopping list ──────────────────────────────────────────────────────────────
-const buildShoppingList = (planRecipes, mealOrder, dayOn, swapPos) => {
-  const plan = planRecipes;
+const buildShoppingList = (resolvedMeals, dayOn) => {
   const CAT_ORDER = ['Meat & Fish', 'Vegetables & Fruit', 'Dairy & Eggs', 'Pantry & Dry'];
   const merged = {};
   for (let i = 0; i < 7; i++) {
     if (!dayOn[i]) continue;
-    const base = plan[mealOrder[i]];
-    let recipe = base;
-    if (swapPos[i] > 0) {
-      const swapId = base.swaps && base.swaps[swapPos[i] - 1];
-      const swapped = swapId != null ? SWAP_POOL.find(r => r.id === swapId) : null;
-      if (swapped) recipe = swapped;
-    }
-    for (const ing of recipe.ingredients || []) {
+    const recipe = resolvedMeals[i];
+    for (const ing of (recipe && recipe.ingredients) || []) {
       if (merged[ing.n]) {
         merged[ing.n] = {
           ...merged[ing.n],
@@ -906,7 +900,12 @@ function AllSortedPrototype() {
     setTimeout(() => { fn(); setClosingSheet(null); setSheetAnimDone(p => ({...p, [name]: false})); }, 280);
   };
   const [savedSet, setSavedSet] = useState(new Set([0, 2, 7]));
-  const [deliveryDay, setDeliveryDay] = useState(() => {
+  const [dislikedSet, setDislikedSet] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('as_disliked') || '[]')); }
+    catch { return new Set(); }
+  });
+  useEffect(() => { localStorage.setItem('as_disliked', JSON.stringify([...dislikedSet])); }, [dislikedSet]);
+  const [weekStartDay, setWeekStartDay] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d;
@@ -945,6 +944,7 @@ function AllSortedPrototype() {
   const [showNewWeekDialog, setShowNewWeekDialog] = useState(false);
   const [weekCompleteMode, setWeekCompleteMode] = useState('celebration'); // 'celebration' | 'stale-early' | 'stale-late'
   const [showDayPicker, setShowDayPicker] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [dpMode, setDpMode] = useState('copy');
   const [copySource, setCopySource] = useState(null);
   const [showSubs, setShowSubs] = useState(false);
@@ -975,7 +975,7 @@ function AllSortedPrototype() {
   const [pendingTime, setPendingTime] = useState('any');
 
   // Derived
-  const maxSwaps = isPremium ? 3 : 1;
+  const maxSwaps = isPremium ? 5 : 2;
   const maxRegens = isPremium ? 3 : 1;
   const regenLeft = maxRegens - regenUsed;
   const maxFills = isPremium ? 4 : 1;
@@ -1012,12 +1012,25 @@ function AllSortedPrototype() {
     setPendingDiet(selectedDiet);
     setPendingAllergens([...allergens]);
   };
+  const computeSwapAlts = (baseMeal) => {
+    const planIds = new Set(activePlan.map(m => m.id));
+    const maxS = maxSwaps;
+    const compatible = ALL_RECIPES.filter(r =>
+      r.id !== baseMeal.id &&
+      !planIds.has(r.id) &&
+      !(r.incompatible || []).includes(selectedDiet) &&
+      !(r.allergens || []).some(a => allergens.includes(a)) &&
+      !dislikedSet.has(r.id)
+    );
+    const same = compatible.filter(r => r.cuisine === baseMeal.cuisine);
+    const other = compatible.filter(r => r.cuisine !== baseMeal.cuisine);
+    return [...same, ...other].slice(0, maxS);
+  };
   const getMealAtDay = i => {
     const base = activePlan[mealOrder[i]];
     if (swapPos[i] > 0) {
-      const swapId = base.swaps && base.swaps[swapPos[i] - 1];
-      const swapped = swapId != null ? SWAP_POOL.find(r => r.id === swapId) : null;
-      if (swapped) return swapped;
+      const alts = computeSwapAlts(base);
+      if (alts[swapPos[i] - 1]) return alts[swapPos[i] - 1];
     }
     return base;
   };
@@ -1219,7 +1232,7 @@ function AllSortedPrototype() {
         const pos = swapPosRef.current[idx];
         const card = container.querySelector('[data-card-idx="' + idx + '"]');
         if (!card || card.dataset.hasSwaps !== 'true') return;
-        const maxS = isPremium ? 3 : 1;
+        const maxS = maxSwaps;
         if (dx < 0) {
           if (pos >= maxS) { setShakeIdx(idx); setTimeout(() => setShakeIdx(null), 380); }
           else swapNext(idx);
@@ -1280,12 +1293,40 @@ function AllSortedPrototype() {
   }, [landingIdx]);
 
   const regenCore = (resetDays) => {
+    if (!resetDays) {
+      // Mid-week regen: keep meals where swapPos=0 (implicit approvals), up to 4
+      const approvedMeals = mealOrder
+        .filter((_, i) => swapPos[i] === 0)
+        .map(mealIdx => activePlan[mealIdx])
+        .slice(0, 4);
+      const approvedIds = new Set(approvedMeals.map(m => m.id));
+      const pool = ALL_RECIPES.filter(r =>
+        !approvedIds.has(r.id) &&
+        !(r.incompatible || []).includes(selectedDiet) &&
+        !(r.allergens || []).some(a => allergens.includes(a)) &&
+        !dislikedSet.has(r.id)
+      );
+      const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+      const newPlan = [...approvedMeals];
+      for (const r of shuffledPool) { if (newPlan.length >= 7) break; newPlan.push(r); }
+      const finalPlan = [...newPlan].sort(() => Math.random() - 0.5).slice(0, 7);
+      setActivePlan(finalPlan);
+      setOrder([0, 1, 2, 3, 4, 5, 6]);
+      setSwapPos(Array(7).fill(0));
+      setRegenUsed(r => r + 1);
+      const initExclMid = {};
+      STAPLES.forEach(s => { initExclMid[s.n] = true; });
+      setExcluded(initExclMid);
+      setShowNewWeek(false);
+      setShowRegenConfirm(false);
+      go('generating');
+    } else {
     const nextSeed = planVersion === 'A' ? 1 : 0;
-    setActivePlan(buildPlanForUser(selectedDiet, allergens, nextSeed));
+    setActivePlan(buildPlanForUser(selectedDiet, allergens, nextSeed, dislikedSet));
     setPlanVersion(v => v === 'A' ? 'B' : 'A');
     setOrder([0, 1, 2, 3, 4, 5, 6]);
     setSwapPos(Array(7).fill(0));
-    if (resetDays) setDayOn(Array(7).fill(true));
+    setDayOn(Array(7).fill(true));
     setRegenUsed(r => r + 1);
     const initExcl = {};
     STAPLES.forEach(s => {
@@ -1295,6 +1336,7 @@ function AllSortedPrototype() {
     setShowNewWeek(false);
     setShowRegenConfirm(false);
     go('generating');
+    }
   };
   const regen = () => regenCore(false);
   const regenFreshWeek = () => regenCore(true);
@@ -1305,13 +1347,16 @@ function AllSortedPrototype() {
   });
   // Bounds check is inside the updater so it always reads fresh state (no stale closure issue)
   const swapNext = i => setSwapPos(p => {
-    if (p[i] >= maxSwaps) return p;
-    const n = [...p]; n[i]++; return n;
+    const n = [...p];
+    n[i] = p[i] <= 0 || p[i] >= maxSwaps ? 1 : p[i] + 1;
+    return n;
   });
   const swapPrev = i => setSwapPos(p => {
-    if (p[i] <= 0) return p;
-    const n = [...p]; n[i]--; return n;
+    const n = [...p];
+    n[i] = p[i] <= 1 ? maxSwaps : p[i] - 1;
+    return n;
   });
+  const toggleDisliked = id => setDislikedSet(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleSaved = id => setSavedSet(p => {
     const n = new Set(p);
     n.has(id) ? n.delete(id) : n.add(id);
@@ -1320,11 +1365,11 @@ function AllSortedPrototype() {
   const toggleAllergen = id => setAllergens(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   // All shopping items + any staples the user has tapped to include
-  const totalEstimate = [...Object.values(buildShoppingList(activePlan, mealOrder, dayOn, swapPos)).flat(), ...STAPLES].filter(item => !excluded[item.n]).reduce((sum, item) => sum + item.price * Math.max(portScale / 2, 0.5), 0);
+  const totalEstimate = [...Object.values(buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn)).flat(), ...STAPLES].filter(item => !excluded[item.n]).reduce((sum, item) => sum + item.price * Math.max(portScale / 2, 0.5), 0);
 
   // ─── Delivery day date helpers ─────────────────────────────────────────────
   const cardDate = i => {
-    const d = new Date(deliveryDay);
+    const d = new Date(weekStartDay);
     d.setDate(d.getDate() + i);
     return d;
   };
@@ -1333,12 +1378,12 @@ function AllSortedPrototype() {
     return "".concat(DAY_SHORT[d.getDay()].toUpperCase(), " ").concat(d.getDate());
   };
   const monthBadge = () => {
-    const s = deliveryDay.getMonth(),
+    const s = weekStartDay.getMonth(),
       e = cardDate(6).getMonth();
     return s === e ? MONTH_SHORT[s] : "".concat(MONTH_SHORT[s], " \xB7 ").concat(MONTH_SHORT[e]);
   };
   const weekRange = () => {
-    const s = deliveryDay,
+    const s = weekStartDay,
       e = cardDate(6);
     return s.getMonth() === e.getMonth() ? "Week of ".concat(s.getDate(), "\u2013").concat(e.getDate(), " ").concat(MONTH_SHORT[s.getMonth()]) : "Week of ".concat(s.getDate(), " ").concat(MONTH_SHORT[s.getMonth()], " \u2013 ").concat(e.getDate(), " ").concat(MONTH_SHORT[e.getMonth()]);
   };
@@ -2059,16 +2104,7 @@ function AllSortedPrototype() {
     const meals = mealOrder.map((_, i) => getMealAtDay(i));
     const today0 = new Date();
     today0.setHours(0, 0, 0, 0);
-    const tonightIdx = Array.from({
-      length: 7
-    }, (_, k) => k).find(k => {
-      const d = cardDate(k);
-      d.setHours(0, 0, 0, 0);
-      return d.toDateString() === today0.toDateString();
-    }) ?? -1;
-    const deliv0 = new Date(deliveryDay);
-    deliv0.setHours(0, 0, 0, 0);
-    const deliveryTomorrow = isFrozen && tonightIdx < 0 && (deliv0 - today0) / 86400000 === 1;
+    // Frozen cards use ordinal numbers, not dates — no tonight/delivery tracking needed
     const badge = (label, color, truncate) => /*#__PURE__*/React.createElement("span", {
       style: {
         background: color + '28',
@@ -2085,6 +2121,8 @@ function AllSortedPrototype() {
         whiteSpace: truncate ? 'nowrap' : undefined,
       }
     }, label);
+    // Ordinal labels for frozen mode: active days → 1,2,3…; off days → ×
+    const frozenOrdinals = (() => { let n = 0; return Array.from({length: 7}, (_, k) => dayOn[k] ? String(++n) : '×'); })();
     return /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
@@ -2093,8 +2131,8 @@ function AllSortedPrototype() {
         overflow: 'hidden'
       }
     }, (() => {
-      const crossesMonth = deliveryDay.getMonth() !== cardDate(6).getMonth();
-      const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[deliveryDay.getMonth()], " \u2013 ").concat(MONTH_SHORT[cardDate(6).getMonth()]) : MONTH_SHORT[deliveryDay.getMonth()];
+      const crossesMonth = weekStartDay.getMonth() !== cardDate(6).getMonth();
+      const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[weekStartDay.getMonth()], " \u2013 ").concat(MONTH_SHORT[cardDate(6).getMonth()]) : MONTH_SHORT[weekStartDay.getMonth()];
       return /*#__PURE__*/React.createElement(ScreenHeader, {
         left: /*#__PURE__*/React.createElement("div", {
           style: {
@@ -2124,18 +2162,14 @@ function AllSortedPrototype() {
             padding: '2px 4px',
             lineHeight: 1
           }
-        }, "\ud83d\udd04"), /*#__PURE__*/React.createElement("span", {
-          style: {
-            background: 'transparent',
-            border: "1px solid ".concat(C.border),
-            borderRadius: 20,
-            padding: '2px 8px',
-            fontSize: 11,
-            fontWeight: 600,
-            color: C.textSec,
-            whiteSpace: 'nowrap'
-          }
-        }, monthLabel)),
+        }, "\ud83d\udd04"), isFrozen
+          ? /*#__PURE__*/React.createElement("span", {
+              style: { background: 'transparent', border: "1px solid ".concat(C.accent), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }
+            }, monthLabel)
+          : /*#__PURE__*/React.createElement("button", {
+              onClick: () => { setDpMode('weekstart'); setShowDayPicker(true); },
+              style: { background: 'transparent', border: "1px solid ".concat(C.border), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.textSec, whiteSpace: 'nowrap', cursor: 'pointer' }
+            }, monthLabel)),
         right: /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'flex',
@@ -2218,7 +2252,7 @@ function AllSortedPrototype() {
           borderRadius: 10,
           opacity: isOff && !isDragging ? 0.4 : 1,
           transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'transform 0.18s ease-out, opacity 0.2s',
-          border: "1px solid ".concat(hasConflict ? '#EF5350' : isFrozen && i === tonightIdx ? C.accent : deliveryTomorrow && i === 0 ? C.accentSoft : isOff ? C.border : 'transparent'),
+          border: "1px solid ".concat(hasConflict ? '#EF5350' : isOff ? C.border : 'transparent'),
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
@@ -2243,16 +2277,34 @@ function AllSortedPrototype() {
         'data-drag-handle': 'true',
         style: {
           color: isDragging ? C.accent : C.textSec,
-          fontSize: 15,
+          fontSize: 20,
           cursor: 'grab',
           flexShrink: 0,
           userSelect: 'none',
           lineHeight: 1,
           alignSelf: 'center',
           touchAction: 'none',
-          padding: '6px 4px'
+          padding: '2px 4px',
+          minWidth: 24,
+          minHeight: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }
-      }, "\u2261") : null, /*#__PURE__*/React.createElement("div", {
+      }, "\u2261") : /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 32,
+          fontWeight: 700,
+          color: isOff ? C.textHint : C.textSec,
+          flexShrink: 0,
+          lineHeight: 1,
+          alignSelf: 'center',
+          padding: '2px 4px',
+          minWidth: 36,
+          textAlign: 'center',
+          userSelect: 'none'
+        }
+      }, frozenOrdinals[i]), /*#__PURE__*/React.createElement("div", {
         onClick: () => {
           if (dragSrcIdx !== null) return;
           if (!isOff) {
@@ -2347,12 +2399,12 @@ function AllSortedPrototype() {
         style: {
           fontSize: 11,
           fontWeight: 800,
-          color: isFrozen && i === tonightIdx ? C.accent : deliveryTomorrow && i === 0 ? C.accentSoft : isOff ? C.textHint : C.textSec,
+          color: isOff ? C.textHint : C.textSec,
           letterSpacing: 0.8,
           flexShrink: 0,
           whiteSpace: 'nowrap'
         }
-      }, isFrozen && i === tonightIdx ? 'TONIGHT' : deliveryTomorrow && i === 0 ? 'TOMORROW' : cardLabel(i)), badge('⏱ ' + parseInt(meal.time), tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
+      }, isFrozen ? null : cardLabel(i)), badge('⏱ ' + parseInt(meal.time), tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
         style: {
           ...T.bodyMed,
           color: isOff ? C.textSec : C.text,
@@ -2471,19 +2523,19 @@ function AllSortedPrototype() {
           transition: 'opacity 0.25s'
         }
       }, Array.from({
-        length: maxSwaps + 1
+        length: maxSwaps
       }).map((_, di) => /*#__PURE__*/React.createElement("div", {
         key: di,
         onClick: isOff ? undefined : () => setSwapPos(p => {
           const n = [...p];
-          n[i] = di;
+          n[i] = di + 1;
           return n;
         }),
         style: {
-          width: di === pos ? 14 : 6,
+          width: pos === di + 1 ? 14 : 6,
           height: 5,
           borderRadius: 3,
-          background: di === pos ? C.accent : C.border,
+          background: pos === di + 1 ? C.accent : C.border,
           transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'all 0.2s',
           cursor: isOff ? 'default' : 'pointer'
         }
@@ -2503,7 +2555,9 @@ function AllSortedPrototype() {
           setShowNextWeekDialog(true);
           return;
         }
-        const deliveryPassed = (deliv0 - today0) / 86400000 < 0;
+        const _now = new Date(); _now.setHours(0,0,0,0);
+        const _ws = new Date(weekStartDay); _ws.setHours(0,0,0,0);
+        const deliveryPassed = (_ws - _now) / 86400000 < 0;
         setWeekCompleteMode(deliveryPassed ? 'stale-late' : 'stale-early');
         go('weekcomplete');
       },
@@ -2596,8 +2650,9 @@ function AllSortedPrototype() {
     }, "Cancel"), /*#__PURE__*/React.createElement("div", {
       onClick: () => {
         setShowNextWeekDialog(false);
-        setCartFilled(false);
-        const deliveryPassed = (deliv0 - today0) / 86400000 < 0;
+        const _now = new Date(); _now.setHours(0,0,0,0);
+        const _ws = new Date(weekStartDay); _ws.setHours(0,0,0,0);
+        const deliveryPassed = (_ws - _now) / 86400000 < 0;
         setWeekCompleteMode(deliveryPassed ? 'stale-late' : 'stale-early');
         go('weekcomplete');
       },
@@ -2614,7 +2669,7 @@ function AllSortedPrototype() {
 
   // 8. Shopping List
   const ShopScreen = () => {
-    const shopping = buildShoppingList(activePlan, mealOrder, dayOn, swapPos);
+    const shopping = buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn);
     const allItems = [...Object.values(shopping).flat(), ...STAPLES];
     const includedCount = allItems.filter(item => !excluded[item.n]).length;
     const fillAvailable = fillUsed < maxFills;
@@ -2675,20 +2730,21 @@ function AllSortedPrototype() {
         }
       }, fillUsed, "/", maxFills, " fills")),
       right: store ? /*#__PURE__*/React.createElement("button", {
-        onClick: () => {
+        onClick: cartFilled || isFrozen ? undefined : () => {
           setPendingStore(store);
           setStorePick(store);
           setShowStore(true);
         },
         style: {
           background: 'none',
-          border: "1px solid ".concat(C.accent),
+          border: "1px solid ".concat(cartFilled || isFrozen ? C.border : C.accent),
           borderRadius: 20,
           padding: '3px 10px',
           ...T.hint,
           fontWeight: 600,
-          color: C.accent,
-          cursor: 'pointer'
+          color: cartFilled || isFrozen ? C.textHint : C.accent,
+          cursor: cartFilled || isFrozen ? 'default' : 'pointer',
+          opacity: cartFilled || isFrozen ? 0.5 : 1
         }
       }, store) : null
     }), /*#__PURE__*/React.createElement("div", {
@@ -2863,32 +2919,16 @@ function AllSortedPrototype() {
       }
     }, "~\u20AC", totalEstimate.toFixed(2))), isFrozen && cartFilled ?
     /*#__PURE__*/
-    /* Frozen + cart filled — view only, no refill */
-    React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 8
-      }
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => go('webview'),
-      style: {
-        flex: 1,
-        background: C.accent,
-        border: 'none',
-        borderRadius: 999,
-        color: C.white,
-        ...T.bodyMed,
-        fontSize: 16,
-        cursor: 'pointer',
-        padding: '20px 16px',
-        textAlign: 'center'
-      }
-    }, store ? "View ".concat(store, " Cart") : 'View Cart')) : isFrozen ?
-    /*#__PURE__*/
-    /* Frozen + post-purchase — show cart for review */
+    /* Frozen + cart filled — greyed out, can't refill a locked week */
     React.createElement(Btn, {
-      label: store ? "View ".concat(store, " Cart") : 'View Cart',
-      onPress: () => go('webview')
+      label: "Fill Cart",
+      active: false
+    }) : isFrozen ?
+    /*#__PURE__*/
+    /* Frozen + post-purchase — greyed out, week already purchased */
+    React.createElement(Btn, {
+      label: "Fill Cart",
+      active: false
     }) : !store ? /*#__PURE__*/React.createElement(Btn, {
       label: "Choose your store",
       onPress: () => {
@@ -3048,7 +3088,7 @@ function AllSortedPrototype() {
   const CartReady = () => {
     const fillsText = isPremium ? "".concat(fillUsed, " of 4 fills used this month") : 'Lifetime fill used';
     const backBtn = /*#__PURE__*/React.createElement("button", {
-      onClick: () => goBack(),
+      onClick: () => { screenStack.current = []; go('plan', { back: true }); },
       style: {
         background: 'none',
         border: 'none',
@@ -3298,7 +3338,7 @@ function AllSortedPrototype() {
     // Delivery date label
     const today1 = new Date();
     today1.setHours(0, 0, 0, 0);
-    const dDay1 = new Date(deliveryDay);
+    const dDay1 = new Date(weekStartDay);
     dDay1.setHours(0, 0, 0, 0);
     const diff1 = Math.round((dDay1 - today1) / (1000 * 60 * 60 * 24));
     const relLbl = diff1 === 0 ? 'Today' : diff1 === 1 ? 'Tomorrow' : diff1 === -1 ? 'Yesterday' : null;
@@ -3310,7 +3350,7 @@ function AllSortedPrototype() {
       setDayOn(Array(7).fill(true));
       const d = new Date();
       d.setDate(d.getDate() + 1);
-      setDeliveryDay(d);
+      setWeekStartDay(d);
       screenStack.current = [];
       go('plan', { back: true });
     };
@@ -3450,12 +3490,6 @@ function AllSortedPrototype() {
         width: '100%'
       }
     }, /*#__PURE__*/React.createElement(TapRow, {
-      label: "\uD83D\uDE9A  Delivery: ".concat(deliveryFull),
-      onPress: () => {
-        setDpMode('delivery');
-        setShowDayPicker(true);
-      }
-    }), /*#__PURE__*/React.createElement(TapRow, {
       label: "\uD83D\uDCE4  Share your week",
       onPress: () => setShowShareSheet(true)
     }))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
@@ -3601,8 +3635,11 @@ function AllSortedPrototype() {
     const hasFilters = savedCuisines.length > 0 || savedTime !== 'any';
     const filtered = savedRecipes.filter(r => {
       if (savedCuisines.length > 0 && !savedCuisines.includes(r.cuisine)) return false;
+      if (savedTime === '15' && parseInt(r.time) > 15) return false;
       if (savedTime === '20' && parseInt(r.time) > 20) return false;
+      if (savedTime === '30' && parseInt(r.time) > 30) return false;
       if (savedTime === '45' && parseInt(r.time) > 45) return false;
+      if (savedTime === '60' && parseInt(r.time) > 60) return false;
       return true;
     });
     const timeCol = t => {
@@ -3898,125 +3935,29 @@ function AllSortedPrototype() {
       style: {
         padding: '14px 20px 20px'
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 20
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        ...T.label,
-        color: C.textSec,
-        marginBottom: 10
-      }
-    }, "Cuisine"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10
-      }
-    }, cuisineOptions.map(c => {
-      const on = pendingCuisines.includes(c);
-      const cc = CUISINE_COLOR[c] || C.textSec;
-      return /*#__PURE__*/React.createElement("div", {
-        key: c,
-        onClick: () => toggleCuisine(c),
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 9,
-          cursor: 'pointer'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 18,
-          height: 18,
-          borderRadius: 5,
-          border: "2px solid ".concat(on ? cc : C.border),
-          background: on ? cc + '22' : 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          transition: 'all 0.15s'
-        }
-      }, on && /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 8,
-          height: 8,
-          borderRadius: 2,
-          background: cc
-        }
-      })), /*#__PURE__*/React.createElement("span", {
-        style: {
-          ...T.meta,
-          color: on ? C.text : C.textSec
-        }
-      }, c));
-    }))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 1,
-        background: C.border,
-        flexShrink: 0
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        ...T.label,
-        color: C.textSec,
-        marginBottom: 10
-      }
-    }, "Cook time"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10
-      }
-    }, [['any', 'Any time'], ['20', '≤ 20 min'], ['45', '≤ 45 min']].map(([v, l]) => {
-      const on = pendingTime === v;
-      return /*#__PURE__*/React.createElement("div", {
-        key: v,
-        onClick: () => setPendingTime(v),
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 9,
-          cursor: 'pointer'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
-          border: "2px solid ".concat(on ? C.accent : C.border),
-          background: 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          transition: 'all 0.15s'
-        }
-      }, on && /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          background: C.accent
-        }
-      })), /*#__PURE__*/React.createElement("span", {
-        style: {
-          ...T.meta,
-          color: on ? C.text : C.textSec
-        }
-      }, l));
-    }))))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+    }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex', padding: '8px 20px 16px' } },
+    /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
+      /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textSec, marginBottom: 10 } }, "Cuisine"),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        cuisineOptions.map(c => {
+          const on = pendingCuisines.includes(c); const cc = CUISINE_COLOR[c] || C.textSec;
+          return /*#__PURE__*/React.createElement("div", { key: c, onClick: () => toggleCuisine(c), style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' } },
+            /*#__PURE__*/React.createElement("div", { style: { width: 18, height: 18, borderRadius: 5, border: "2px solid ".concat(on ? cc : C.border), background: on ? cc + '22' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
+              on && /*#__PURE__*/React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: cc } })),
+            /*#__PURE__*/React.createElement("span", { style: { ...T.meta, color: on ? C.text : C.textSec } }, c));
+        }))),
+    /*#__PURE__*/React.createElement("div", { style: { width: 1, background: C.border, margin: '0 14px', flexShrink: 0 } }),
+    /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
+      /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textSec, marginBottom: 10 } }, "Cook time"),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        [['any','Any'],['15','≤15m'],['20','≤20m'],['30','≤30m'],['45','≤45m'],['60','≤60m']].map(([v,l]) => {
+          const on = pendingTime === v;
+          return /*#__PURE__*/React.createElement("div", { key: v, onClick: () => setPendingTime(v), style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' } },
+            /*#__PURE__*/React.createElement("div", { style: { width: 18, height: 18, borderRadius: '50%', border: "2px solid ".concat(on ? C.accent : C.border), background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
+              on && /*#__PURE__*/React.createElement("div", { style: { width: 8, height: 8, borderRadius: '50%', background: C.accent } })),
+            /*#__PURE__*/React.createElement("span", { style: { ...T.meta, color: on ? C.text : C.textSec } }, l));
+        }))))),
+/*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
       label: "Apply filters",
       onPress: apply
     }))));
@@ -4198,31 +4139,17 @@ function AllSortedPrototype() {
     on: notifs,
     onToggle: () => setNotifs(p => !p)
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "History"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.bgSec,
-      borderRadius: 12,
-      overflow: 'hidden'
-    }
+    style: { background: C.bgSec, borderRadius: 12, overflow: 'hidden' }
   }, /*#__PURE__*/React.createElement("div", {
     onClick: () => go('pastweeks'),
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '12px 16px',
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      ...T.body,
-      color: C.text
-    }
-  }, "Past Weeks"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: C.textHint,
-      fontSize: 18
-    }
-  }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: "1px solid ".concat(C.border), cursor: 'pointer' }
+  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Past Weeks"),
+  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")),
+  /*#__PURE__*/React.createElement("div", {
+    onClick: () => go('disliked'),
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }
+  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Disliked recipes"),
+  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.bgSec,
       borderRadius: 12,
@@ -4527,156 +4454,54 @@ function AllSortedPrototype() {
 
   // 16. Paywall
   const Paywall = () => /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }
+    style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
   }, /*#__PURE__*/React.createElement(ScreenHeader, {
     left: /*#__PURE__*/React.createElement("button", {
       onClick: goBack,
-      style: {
-        background: 'none',
-        border: 'none',
-        fontSize: 26,
-        cursor: 'pointer',
-        color: C.textSec,
-        padding: '0 2px',
-        lineHeight: 1,
-        marginLeft: -4
-      }
+      style: { background: 'none', border: 'none', fontSize: 26, cursor: 'pointer', color: C.textSec, padding: '0 2px', lineHeight: 1, marginLeft: -4 }
     }, "\u2039")
   }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      overflowY: 'auto',
-      scrollbarWidth: 'none'
-    }
+    style: { flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: "20px ".concat(S.frame, "px 20px"),
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 44,
-      marginBottom: 14
-    }
-  }, "\u2B50"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.heading,
-      color: C.text,
-      marginBottom: 8
-    }
-  }, "AllSorted Premium"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.body,
-      color: C.textSec,
-      lineHeight: 1.6
-    }
-  }, "Everything you need for a sorted week, every week.")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: "0 ".concat(S.frame, "px"),
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-      marginBottom: 24
-    }
+    style: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: "28px ".concat(S.frame, "px 12px"), textAlign: 'center' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 48, marginBottom: 10 } }, "\u2B50"),
+  /*#__PURE__*/React.createElement("div", { style: { ...T.heading, color: C.text, marginBottom: 6, fontSize: 22 } }, "AllSorted Premium"),
+  /*#__PURE__*/React.createElement("div", { style: { ...T.body, color: C.textSec, lineHeight: 1.5, marginBottom: 6 } }, "For people who take their week seriously.")),
+  /*#__PURE__*/React.createElement("div", {
+    style: { padding: "0 ".concat(S.frame, "px"), display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }
   }, [{
-    emoji: '🛒',
-    t: '4 cart fills per month',
-    s: 'vs 1 lifetime fill on free'
+    emoji: '\uD83D\uDED2', t: '4 cart fills /month', accent: C.accent
   }, {
-    emoji: '🔄',
-    t: '3 regens per week',
-    s: 'Swap your whole week any time.\nIncludes AI insight on every plan.'
+    emoji: '\uD83D\uDD04', t: '3 regens /week', accent: C.accentSoft
   }, {
-    emoji: '⭐',
-    t: 'Full recipe library',
-    s: 'More dinners to swipe through every week'
+    emoji: '\u2665', t: 'Expanded recipe library', accent: '#EF9A9A'
+  }, {
+    emoji: '\uD83D\uDD13', t: '6 swaps /meal', accent: '#80DEEA'
+  }, {
+    emoji: '\u2728', t: 'AI insight', accent: '#81D4FA'
+  }, {
+    emoji: '\uD83D\uDC4E', t: 'Dislike & hide', accent: '#CE93D8'
   }].map(f => /*#__PURE__*/React.createElement("div", {
     key: f.t,
     style: {
-      display: 'flex',
-      gap: 14,
-      alignItems: 'flex-start',
-      background: C.bgSec,
-      borderRadius: 12,
-      padding: '14px',
-      border: "1px solid ".concat(C.border)
+      background: "linear-gradient(135deg, ".concat(f.accent, "0D 0%, ").concat(C.bgSec, " 60%)"),
+      borderRadius: 14, padding: '14px 10px',
+      border: "1px solid ".concat(f.accent, "33"),
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center'
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 24,
-      flexShrink: 0
-    }
-  }, f.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.bodyMed,
-      color: C.text
-    }
-  }, f.t), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.meta,
-      color: C.textSec,
-      marginTop: 3,
-      whiteSpace: 'pre-line'
-    }
-  }, f.s))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      padding: "0 ".concat(S.frame, "px 12px")
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 32,
-      fontWeight: 800,
-      color: C.text
-    }
-  }, "\u20AC12.99"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      ...T.body,
-      color: C.textSec
-    }
-  }, " / month"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.hint,
-      color: C.textHint,
-      lineHeight: 1.6,
-      marginTop: 8
-    }
-  }, "Cancel anytime \xB7 EU 14-day refund right if unused \xB7 renews monthly"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: 16,
-      marginTop: 8,
-      paddingBottom: 24
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      ...T.hint,
-      color: C.textSec,
-      cursor: 'pointer'
-    }
-  }, "Privacy Policy"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      ...T.hint,
-      color: C.textSec,
-      cursor: 'pointer'
-    }
-  }, "Terms of Service")))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+  }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 26 } }, f.emoji),
+  /*#__PURE__*/React.createElement("div", { style: { ...T.meta, color: C.text, fontWeight: 600, lineHeight: 1.35 } }, f.t)))),
+  /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', padding: "0 ".concat(S.frame, "px 12px") } },
+    /*#__PURE__*/React.createElement("span", { style: { fontSize: 34, fontWeight: 800, color: C.text } }, "\u20AC12.99"),
+    /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.textSec } }, " / month"),
+    /*#__PURE__*/React.createElement("div", { style: { ...T.hint, color: C.textHint, lineHeight: 1.6, marginTop: 8 } }, "Cancel anytime \xB7 EU 14-day refund right if unused \xB7 renews monthly"),
+    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8, paddingBottom: 24 } },
+      /*#__PURE__*/React.createElement("span", { style: { ...T.hint, color: C.textSec, cursor: 'pointer' } }, "Privacy Policy"),
+      /*#__PURE__*/React.createElement("span", { style: { ...T.hint, color: C.textSec, cursor: 'pointer' } }, "Terms of Service")))),
+  /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
     label: "Start Premium",
-    onPress: () => {
-      setIsPremium(true);
-      go('plan');
-    }
-  })));
-
+    onPress: () => { setIsPremium(true); go('plan'); }
+  })))
   // ─── OVERLAYS ─────────────────────────────────────────────────────────────────
 
   // Recipe Detail Bottom Sheet — stable height (sized to tallest tab), 3 tabs, no scroll
@@ -4834,7 +4659,7 @@ function AllSortedPrototype() {
         marginTop: 1,
         flexShrink: 0
       }
-    }, savedSet.has(mealIdx) ? '❤️' : '🤍')), /*#__PURE__*/React.createElement("div", {
+    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), /*#__PURE__*/React.createElement("button", {onClick: () => isPremium ? toggleDisliked(mealIdx) : (showToast('Premium feature'), go('paywall')), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: isPremium?(dislikedSet.has(mealIdx)?1:0.4):0.3, color: isPremium?(dislikedSet.has(mealIdx)?C.error:C.textHint):C.textHint}}, isPremium?'👎':'🔒')), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         padding: '12px 16px 0',
@@ -5676,14 +5501,14 @@ function AllSortedPrototype() {
     }, "\uD83D\uDD12 Unlock Premium")))));
   };
 
-  // Day Picker Sheet — three modes: 'delivery' (set anchor), 'copy' (Plan), 'use' (Saved)
+  // Day Picker Sheet — three modes: 'weekstart' (set week start), 'copy' (Plan), 'use' (Saved)
   const DayPickerSheet = () => {
     if (!showDayPicker) return null;
     const isUse = dpMode === 'use';
-    const isDelivery = dpMode === 'delivery';
+    const isWeekStart = dpMode === 'weekstart';
 
     // Delivery mode rows — 8 days starting today
-    const deliveryRows = isDelivery ? Array.from({
+    const deliveryRows = isWeekStart ? Array.from({
       length: 8
     }, (_, k) => {
       const d = new Date();
@@ -5691,9 +5516,9 @@ function AllSortedPrototype() {
       return d;
     }) : null;
     const pickDay = i => {
-      if (isDelivery) {
+      if (isWeekStart) {
         const d = deliveryRows[i];
-        setDeliveryDay(new Date(d));
+        setWeekStartDay(new Date(d));
         setShowDayPicker(false);
         showToast("Delivery: ".concat(DAY_SHORT[d.getDay()], " ").concat(d.getDate()));
         return;
@@ -5730,7 +5555,7 @@ function AllSortedPrototype() {
         setShowDayPicker(false);
       }
     };
-    const title = isDelivery ? "When's your delivery?" : isUse ? 'Add to your week' : 'Copy to which day?';
+    const title = isWeekStart ? "When does your week start?" : isUse ? 'Add to your week' : 'Copy to which day?';
     return /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'absolute',
@@ -5766,65 +5591,64 @@ function AllSortedPrototype() {
         padding: '2px 20px 14px',
         flexShrink: 0
       }
-    }, title), /*#__PURE__*/React.createElement(Divider, null), isDelivery ? /*#__PURE__*/React.createElement("div", {
-      style: {
-        overflowY: 'auto',
-        scrollbarWidth: 'none'
-      }
-    }, deliveryRows.map((d, i) => {
-      const isSelected = d.toDateString() === deliveryDay.toDateString();
-      const dayName = DAY_SHORT[d.getDay()];
-      const dateNum = d.getDate();
-      const rightLabel = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : MONTH_SHORT[d.getMonth()];
+    }, title), /*#__PURE__*/React.createElement(Divider, null), isWeekStart ? /*#__PURE__*/React.createElement(React.Fragment, null,
+  /* Calendar header: month nav */
+  /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px', flexShrink: 0 }
+  },
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setCalMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() - 1); return d; }),
+      style: { background: 'none', border: 'none', fontSize: 20, color: C.textSec, cursor: 'pointer', padding: '4px 8px' }
+    }, "\u2039"),
+    /*#__PURE__*/React.createElement("span", { style: { ...T.bodyMed, color: C.text } },
+      MONTH_SHORT[calMonth.getMonth()] + ' ' + calMonth.getFullYear()),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setCalMonth(m => { const d = new Date(m); d.setMonth(d.getMonth() + 1); return d; }),
+      style: { background: 'none', border: 'none', fontSize: 20, color: C.textSec, cursor: 'pointer', padding: '4px 8px' }
+    }, "\u203A")),
+  /* Day headers */
+  /*#__PURE__*/React.createElement("div", {
+    style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '0 16px', marginBottom: 4, flexShrink: 0 }
+  }, ['M','T','W','T','F','S','S'].map((d, i) =>
+    /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: { textAlign: 'center', ...T.hint, color: C.textHint, paddingBottom: 6, fontWeight: 600 }
+    }, d))),
+  /* Calendar grid */
+  /*#__PURE__*/React.createElement("div", {
+    style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '0 16px 20px', gap: '6px 0', flexShrink: 0 }
+  }, (() => {
+    const yr = calMonth.getFullYear(), mo = calMonth.getMonth();
+    const firstDow = (new Date(yr, mo, 1).getDay() + 6) % 7; // Mon=0
+    const dim = new Date(yr, mo + 1, 0).getDate();
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const selStr = weekStartDay.toDateString();
+    const cells = [];
+    for (let e = 0; e < firstDow; e++) cells.push(null);
+    for (let d = 1; d <= dim; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells.map((d, idx) => {
+      if (!d) return /*#__PURE__*/React.createElement("div", { key: idx });
+      const date = new Date(yr, mo, d);
+      const isPast = date < today0;
+      const isSel = date.toDateString() === selStr;
+      const isToday = date.toDateString() === today0.toDateString();
       return /*#__PURE__*/React.createElement("div", {
-        key: i,
-        onClick: () => pickDay(i),
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          padding: '14px 20px',
-          borderBottom: "1px solid ".concat(C.border),
-          cursor: 'pointer',
-          gap: 10,
-          background: isSelected ? C.accentMuted : 'transparent',
-          transition: 'background 0.15s'
-        }
+        key: idx,
+        onClick: isPast ? undefined : () => { setWeekStartDay(new Date(yr, mo, d)); setShowDayPicker(false); showToast('Week starts ' + DAY_SHORT[date.getDay()] + ' ' + d); },
+        style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, cursor: isPast ? 'default' : 'pointer' }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          flex: 1,
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 6
+          width: 34, height: 34, borderRadius: '50%',
+          background: isSel ? C.accent : isToday ? C.accentMuted : 'transparent',
+          color: isSel ? C.white : isPast ? C.textHint : isToday ? C.accent : C.text,
+          fontSize: 14, fontWeight: isSel || isToday ? 700 : 400,
+          opacity: isPast ? 0.35 : 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
         }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 14,
-          fontWeight: 700,
-          color: isSelected ? C.accent : C.text
-        }
-      }, dayName), /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 14,
-          color: isSelected ? C.accentSoft : C.textSec
-        }
-      }, dateNum)), /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 12,
-          fontWeight: 600,
-          color: isSelected ? C.accent : C.textHint,
-          flexShrink: 0,
-          letterSpacing: 0.3
-        }
-      }, rightLabel), isSelected && /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: C.accent,
-          fontSize: 15,
-          fontWeight: 700,
-          flexShrink: 0,
-          marginLeft: 2
-        }
-      }, "\u2713"));
-    })) :
+      }, d));
+    });
+  })())) :
     /*#__PURE__*/
     /* Copy / Use mode — plan day rows */
     React.createElement("div", {
@@ -6690,44 +6514,57 @@ function AllSortedPrototype() {
       center: true
     }, /*#__PURE__*/React.createElement(BrandTagline, null)));
   };
-  // ─── Status bar ────────────────────────────────────────────────────────────────
-  const StatusBar = () => /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 44,
-      background: C.bg,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 24px',
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: C.text
-    }
-  }, "9:41"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 110,
-      height: 28,
-      background: '#000',
-      borderRadius: 16,
-      border: '2px solid #222'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      alignItems: 'center',
-      fontSize: 11,
-      color: C.text
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "\u25CF\u25CF\u25CF"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: C.accent
-    }
-  }, "\uD83D\uDD0B")));
+
+  // Disliked screen
+  const DislikedScreen = () => {
+    const dislikedRecipes = ALL_RECIPES.filter(r => dislikedSet.has(r.id));
+    const hasFilters = savedCuisines.length > 0 || savedTime !== 'any';
+    const filtered = dislikedRecipes.filter(r => {
+      if (savedCuisines.length > 0 && !savedCuisines.includes(r.cuisine)) return false;
+      if (savedTime === '15' && parseInt(r.time) > 15) return false;
+      if (savedTime === '20' && parseInt(r.time) > 20) return false;
+      if (savedTime === '30' && parseInt(r.time) > 30) return false;
+      if (savedTime === '45' && parseInt(r.time) > 45) return false;
+      if (savedTime === '60' && parseInt(r.time) > 60) return false;
+      return true;
+    });
+    const openFilters = () => { setPendingCuisines([...savedCuisines]); setPendingTime(savedTime); setShowSavedFilters(true); };
+    return /*#__PURE__*/React.createElement("div", {
+      style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: /*#__PURE__*/React.createElement("button", {
+        onClick: () => goBack(),
+        style: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: C.textSec, padding: '0 2px', lineHeight: 1 }
+      }, "\u2039"),
+      right: /*#__PURE__*/React.createElement("button", {
+        onClick: openFilters,
+        style: { background: 'transparent', border: "1px solid ".concat(hasFilters ? C.accent : C.border), borderRadius: 20, padding: '4px 12px', color: hasFilters ? C.accent : C.textSec, ...T.hint, fontWeight: 600, cursor: 'pointer' }
+      }, 'Filters')
+    }), /*#__PURE__*/React.createElement("div", {
+      style: { flex: 1, overflowY: 'auto', padding: '14px', scrollbarWidth: 'none' }
+    }, filtered.length === 0
+      ? /*#__PURE__*/React.createElement("div", {
+          style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '48px 24px', gap: 12 }
+        }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 48 } }, dislikedRecipes.length === 0 ? '\uD83D\uDC4E' : '\uD83D\uDD0D'),
+        /*#__PURE__*/React.createElement("div", { style: { ...T.bodyMed, color: C.textSec } }, dislikedRecipes.length === 0 ? 'No disliked recipes' : 'No recipes match'),
+        /*#__PURE__*/React.createElement("div", { style: { ...T.body, color: C.textHint, lineHeight: 1.6 } }, dislikedRecipes.length === 0 ? 'Thumbs-down a recipe to hide it from future plans.' : 'Try adjusting your filters.'))
+      : /*#__PURE__*/React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
+        filtered.map(r => {
+          const tc2 = t => { const m = parseInt(t); return m <= 20 ? C.accent : m <= 40 ? C.warning : '#EF6C00'; };
+          return /*#__PURE__*/React.createElement("div", {
+            key: r.id,
+            onClick: () => { setActiveRecipe({ meal: r, mealIdx: r.id, fromSaved: true }); setRecipeTab('ingredients'); setShowRecipe(true); },
+            style: { background: C.bgSec, borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: "1px solid transparent" }
+          }, /*#__PURE__*/React.createElement("div", {
+            style: { height: 90, background: C.bgEl, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }
+          }, r.photo ? /*#__PURE__*/React.createElement("img", { src: r.photo, alt: '', style: { width: '100%', height: '100%', objectFit: 'cover' }, onError: e => { e.target.style.display = 'none'; } }) : null),
+          /*#__PURE__*/React.createElement("div", { style: { padding: '9px 10px 10px' } },
+            /*#__PURE__*/React.createElement("div", { style: { ...T.bodyMed, color: C.text, lineHeight: 1.3, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, r.name),
+            /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' } },
+              /*#__PURE__*/React.createElement("span", { style: { background: tc2(r.time) + '28', color: tc2(r.time), borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 700, flexShrink: 0 } }, '\u23F1 ' + parseInt(r.time)),
+              /*#__PURE__*/React.createElement("span", { style: { background: (CUISINE_COLOR[r.cuisine] || C.textSec) + '28', color: CUISINE_COLOR[r.cuisine] || C.textSec, borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, r.cuisine))));
+        }))))
+  };
 
   // ─── Screen map ────────────────────────────────────────────────────────────────
   const screens = {
@@ -6755,6 +6592,7 @@ function AllSortedPrototype() {
     saved: /*#__PURE__*/React.createElement(SavedScreen, null),
     profile: /*#__PURE__*/React.createElement(ProfileScreen, null),
     pastweeks: /*#__PURE__*/React.createElement(PastWeeksScreen, null),
+    disliked: /*#__PURE__*/React.createElement(DislikedScreen, null),
     historydetail: /*#__PURE__*/React.createElement(HistoryDetailScreen, null),
     legal: /*#__PURE__*/React.createElement(LegalScreen, null),
     paywall: /*#__PURE__*/React.createElement(Paywall, null)
@@ -6776,7 +6614,7 @@ function AllSortedPrototype() {
       display: 'flex',
       flexDirection: 'column'
     }
-  }, /*#__PURE__*/React.createElement(StatusBar, null), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       display: 'flex',
