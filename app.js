@@ -1,0 +1,6889 @@
+// AllSorted — app logic. Loaded after data/recipes.js.
+// Migrated verbatim from prototype.html.
+
+const {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef
+} = React;
+
+// ─── Design Tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg: '#0D0D0D',
+  bgSec: '#161616',
+  bgEl: '#1E1E1E',
+  border: '#2C2C2C',
+  accent: '#4CAF50',
+  accentSoft: '#81C784',
+  accentMuted: '#1B5E20',
+  text: '#F0F0F0',
+  textSec: '#9E9E9E',
+  textHint: '#5E5E5E',
+  error: '#EF5350',
+  warning: '#FFB74D',
+  slow: '#EF6C00',
+  white: '#FFFFFF',
+  protein: '#4CAF50',
+  carbs: '#FFD740',
+  fat: '#FF9800',
+  fibre: '#42A5F5'
+};
+
+// ─── Typography scale ──────────────────────────────────────────────────────────
+const T = {
+  heading: {
+    fontSize: 24,
+    fontWeight: 700
+  },
+  // screen titles
+  title: {
+    fontSize: 18,
+    fontWeight: 700
+  },
+  // back header, sheet titles
+  logo: {
+    fontSize: 18,
+    fontWeight: 800
+  },
+  // AllSorted wordmark
+  bodyMed: {
+    fontSize: 15,
+    fontWeight: 600
+  },
+  // card names, row labels, btn
+  body: {
+    fontSize: 15,
+    fontWeight: 400
+  },
+  // body copy, list items
+  meta: {
+    fontSize: 13,
+    fontWeight: 400
+  },
+  // subtext, cuisine/time
+  label: {
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9
+  },
+  // section labels
+  hint: {
+    fontSize: 12,
+    fontWeight: 400
+  } // hints, legal
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+const timeColor = t => { const m = parseInt(t); return m <= 20 ? C.accent : m <= 40 ? C.warning : C.slow; };
+
+// ─── Spacing ───────────────────────────────────────────────────────────────────
+const S = {
+  frame: 16,
+  // horizontal padding for all screens
+  card: 12,
+  // internal card padding
+  section: 16,
+  // vertical gap between sections
+  hdrPadT: 14,
+  // header top padding
+  hdrPadB: 14,
+  // header bottom padding
+  ftPadT: 12,
+  // footer CTA top padding
+  ftPadB: 20 // footer CTA bottom padding
+};
+
+
+const buildPlanForUser = (diet, allergens, seed) => {
+  const compatible = ALL_RECIPES.filter(r =>
+    !((r.incompatible || []).includes(diet)) &&
+    !(r.allergens || []).some(a => allergens.includes(a))
+  );
+  const pool = compatible.length >= 7 ? compatible : ALL_RECIPES;
+  const base = seed === 0 ? PLAN_A : PLAN_B;
+  const usedIds = new Set();
+  return base.map(meal => {
+    const hasConflict =
+      (meal.incompatible || []).includes(diet) ||
+      (meal.allergens || []).some(a => allergens.includes(a));
+    if (!hasConflict) { usedIds.add(meal.id); return meal; }
+    const replacement = compatible.find(r => !usedIds.has(r.id));
+    if (replacement) { usedIds.add(replacement.id); return replacement; }
+    return meal;
+  });
+};
+
+// ─── Pantry staples (pre-excluded) ──────────────────────────────────────────────────
+const STAPLES = [{
+  n: 'Olive oil',
+  q: '500ml bottle',
+  price: 3.49
+}, {
+  n: 'Salt',
+  q: '750g drum',
+  price: 0.79
+}, {
+  n: 'Black pepper',
+  q: '25g jar',
+  price: 0.99
+}, {
+  n: 'Plain flour',
+  q: '1.5kg bag',
+  price: 1.19
+}, {
+  n: 'Sugar',
+  q: '1kg bag',
+  price: 1.39
+}, {
+  n: 'Dried herbs',
+  q: 'mixed, 20g',
+  price: 1.49
+}, {
+  n: 'Stock cubes',
+  q: 'pack of 6',
+  price: 1.29
+}];
+
+// ─── Dynamic shopping list ──────────────────────────────────────────────────────────────
+const buildShoppingList = (planRecipes, mealOrder, dayOn, swapPos) => {
+  const plan = planRecipes;
+  const CAT_ORDER = ['Meat & Fish', 'Vegetables & Fruit', 'Dairy & Eggs', 'Pantry & Dry'];
+  const merged = {};
+  for (let i = 0; i < 7; i++) {
+    if (!dayOn[i]) continue;
+    const base = plan[mealOrder[i]];
+    let recipe = base;
+    if (swapPos[i] > 0) {
+      const swapId = base.swaps && base.swaps[swapPos[i] - 1];
+      const swapped = swapId != null ? SWAP_POOL.find(r => r.id === swapId) : null;
+      if (swapped) recipe = swapped;
+    }
+    for (const ing of recipe.ingredients || []) {
+      if (merged[ing.n]) {
+        merged[ing.n] = {
+          ...merged[ing.n],
+          count: merged[ing.n].count + 1,
+          price: merged[ing.n].price + ing.price
+        };
+      } else {
+        merged[ing.n] = {
+          ...ing,
+          count: 1
+        };
+      }
+    }
+  }
+  const result = {};
+  for (const item of Object.values(merged)) {
+    const cat = item.cat || 'Pantry & Dry';
+    if (!result[cat]) result[cat] = [];
+    result[cat].push({
+      n: item.n,
+      q: item.count > 1 ? "".concat(item.q, " \xD7").concat(item.count) : item.q,
+      price: item.price
+    });
+  }
+  const ordered = {};
+  for (const cat of CAT_ORDER) {
+    if (result[cat]) ordered[cat] = result[cat];
+  }
+  for (const cat of Object.keys(result)) {
+    if (!ordered[cat]) ordered[cat] = result[cat];
+  }
+  return ordered;
+};
+const PAST_WEEKS = [{
+  id: 1,
+  delivery: new Date(2026, 4, 12),
+  estimate: 54.20,
+  // Mon 12 May
+  meals: [{
+    name: 'Garlic Butter Chicken',
+    emoji: '🍗',
+    cuisine: 'Irish',
+    time: '25 min',
+    protein: 42
+  }, {
+    name: 'Smoked Salmon Pasta',
+    emoji: '🍝',
+    cuisine: 'Italian',
+    time: '20 min',
+    protein: 31
+  }, {
+    name: 'Beef & Guinness Stew',
+    emoji: '🥘',
+    cuisine: 'Irish',
+    time: '45 min',
+    protein: 38
+  }, {
+    name: 'Lemon Herb Cod',
+    emoji: '🐟',
+    cuisine: 'Irish',
+    time: '18 min',
+    protein: 29
+  }, {
+    name: 'Chickpea Curry',
+    emoji: '🍛',
+    cuisine: 'Asian',
+    time: '30 min',
+    protein: 18
+  }, {
+    name: "Lamb Shepherd's Pie",
+    emoji: '🥧',
+    photo: PHOTO('1650917331384-1fd06afa3230'),
+    cuisine: 'Irish',
+    time: '55 min',
+    protein: 34
+  }, {
+    name: 'Roast Chicken Sunday',
+    emoji: '🍖',
+    cuisine: 'Irish',
+    time: '90 min',
+    protein: 45
+  }],
+  tips: [{
+    icon: '💪',
+    text: 'Strong protein week — averaging 34g per meal. Good for an active lifestyle without supplements.'
+  }, {
+    icon: '⏱️',
+    text: 'Sunday roast is 90 min — worth prepping the veg Saturday night to keep it stress-free.'
+  }, {
+    icon: '🥘',
+    text: 'Beef stew and shepherd\'s pie improve overnight. Make the full batch and refrigerate half for next day.'
+  }]
+}, {
+  id: 2,
+  delivery: new Date(2026, 4, 5),
+  estimate: 47.80,
+  // Mon 5 May
+  meals: [{
+    name: 'Thai Basil Stir Fry',
+    emoji: '🍜',
+    cuisine: 'Asian',
+    time: '20 min',
+    protein: 22
+  }, {
+    name: 'Honey Garlic Prawns',
+    emoji: '🦐',
+    cuisine: 'Asian',
+    time: '20 min',
+    protein: 28
+  }, {
+    name: 'Irish Lamb Stew',
+    emoji: '🥘',
+    photo: PHOTO('1664741662725-bd131742b7b7'),
+    cuisine: 'Irish',
+    time: '50 min',
+    protein: 35
+  }, {
+    name: 'Baked Hake',
+    emoji: '🐟',
+    photo: PHOTO('1728963228980-71c76178616a'),
+    cuisine: 'Irish',
+    time: '22 min',
+    protein: 30
+  }, {
+    name: 'Lentil Dahl',
+    emoji: '🥣',
+    cuisine: 'Asian',
+    time: '35 min',
+    protein: 16
+  }, {
+    name: 'Chicken Pot Pie',
+    emoji: '🥧',
+    photo: PHOTO('1650917331384-1fd06afa3230'),
+    cuisine: 'Irish',
+    time: '55 min',
+    protein: 32
+  }, {
+    name: 'Sunday Roast Beef',
+    emoji: '🥩',
+    photo: PHOTO('1635897411141-7bd2b9c6ab16'),
+    cuisine: 'Irish',
+    time: '90 min',
+    protein: 48
+  }],
+  tips: [{
+    icon: '🌏',
+    text: 'Good variety — Asian flavours mid-week, Irish classics at the weekend. Nice balance.'
+  }, {
+    icon: '🦐',
+    text: 'Prawns and baked hake are both under 22 mins — save these for your busiest weeknights.'
+  }, {
+    icon: '🛒',
+    text: 'Garlic, ginger and soy sauce appear across multiple dishes — buy once, use three times.'
+  }]
+}];
+const SHARE_APPS = [{
+  name: 'WhatsApp',
+  bg: '#25D366',
+  icon: '💬'
+}, {
+  name: 'Instagram',
+  bg: '#C13584',
+  icon: '📸'
+}, {
+  name: 'iMessage',
+  bg: '#34C759',
+  icon: '✉️'
+}, {
+  name: 'Telegram',
+  bg: '#2AABEE',
+  icon: '✈️'
+}, {
+  name: 'X',
+  bg: '#1A1A1A',
+  icon: '✕'
+}, {
+  name: 'Save',
+  bg: '#007AFF',
+  icon: '⬇️'
+}];
+const INGREDIENTS = [{
+  n: 'Chicken breast',
+  q: '200g (1 serving)'
+}, {
+  n: 'Unsalted butter',
+  q: '20g'
+}, {
+  n: 'Garlic cloves',
+  q: '2, minced'
+}, {
+  n: 'Fresh thyme',
+  q: '2 sprigs'
+}, {
+  n: 'Lemon',
+  q: '½, zested & juiced'
+}, {
+  n: 'Olive oil',
+  q: '½ tbsp'
+}, {
+  n: 'Salt & pepper',
+  q: 'to taste'
+}];
+const STEPS = ['Pat chicken dry and season generously with salt and pepper.', 'Heat olive oil in a large pan over medium-high heat until shimmering.', 'Add chicken and cook 5–6 minutes per side until deep golden brown.', 'Reduce heat. Add butter, garlic and thyme. Baste continuously for 2 minutes.', 'Squeeze lemon juice over, rest 3 minutes before slicing.'];
+const STORES = [{
+  id: 'Tesco',
+  label: 'Tesco Ireland',
+  sub: 'Delivery + Click & Collect',
+  emoji: '🛍️'
+}, {
+  id: 'Dunnes',
+  label: 'Dunnes Stores',
+  sub: 'Delivery + Click & Collect',
+  emoji: '🏪'
+}, {
+  id: 'SuperValu',
+  label: 'SuperValu',
+  sub: 'Click & Collect + some delivery',
+  emoji: '🏬'
+}];
+const CUISINE_COLOR = {
+  'Irish': '#66BB6A',
+  'Italian': '#EF5350',
+  'Asian': '#FFA726',
+  'French': '#CE93D8',
+  'Mediterranean': '#4DD0E1',
+  'Middle Eastern': '#FFD54F',
+  'Mexican': '#FF8A65',
+  'European': '#64B5F6',
+  'Indian': '#FFAB40',
+  'North African': '#80CBC4'
+};
+const DIET_LABELS = {
+  veg: 'Vegetarian',
+  vegan: 'Vegan',
+  protein: 'High Protein',
+  lowcarb: 'Low Carb',
+  gf: 'Gluten-Free',
+  balanced: 'Balanced'
+};
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ALLERGENS = [{
+  id: 'gluten',
+  label: 'Gluten',
+  emoji: '🌾'
+}, {
+  id: 'crustaceans',
+  label: 'Crustaceans',
+  emoji: '🦞'
+}, {
+  id: 'eggs',
+  label: 'Eggs',
+  emoji: '🥚'
+}, {
+  id: 'fish',
+  label: 'Fish',
+  emoji: '🐟'
+}, {
+  id: 'peanuts',
+  label: 'Peanuts',
+  emoji: '🥜'
+}, {
+  id: 'treenuts',
+  label: 'Tree Nuts',
+  emoji: '🌰'
+}, {
+  id: 'milk',
+  label: 'Milk',
+  emoji: '🥛'
+}, {
+  id: 'celery',
+  label: 'Celery',
+  emoji: '🌿'
+}, {
+  id: 'mustard',
+  label: 'Mustard',
+  emoji: '🟡'
+}, {
+  id: 'sesame',
+  label: 'Sesame',
+  emoji: '🫙'
+}, {
+  id: 'soy',
+  label: 'Soy',
+  emoji: '🫘'
+}, {
+  id: 'lupin',
+  label: 'Lupin',
+  emoji: '🌼'
+}, {
+  id: 'molluscs',
+  label: 'Molluscs',
+  emoji: '🐚'
+}, {
+  id: 'sulphites',
+  label: 'Sulphites',
+  emoji: '🍷'
+}];
+
+// ─── Shared UI helpers ─────────────────────────────────────────────────────────
+const pill = (color, text) => /*#__PURE__*/React.createElement("span", {
+  style: {
+    background: color + '22',
+    color,
+    borderRadius: 20,
+    padding: '2px 8px',
+    ...T.hint,
+    fontWeight: 600,
+    flexShrink: 0
+  }
+}, text);
+const SectionLabel = ({
+  children
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    ...T.label,
+    color: C.textSec,
+    marginBottom: 8
+  }
+}, children);
+
+// Macro ring — SVG progress ring for recipe detail macros tab
+// Defined at module level (not inside render) to keep React component identity stable
+const _RING_R = 26;
+const _RING_CIRC = 2 * Math.PI * _RING_R;
+const MacroRing = ({
+  label,
+  value,
+  color,
+  refVal
+}) => {
+  const pct = Math.min(value / refVal, 1);
+  const dash = pct * _RING_CIRC;
+  const gap = _RING_CIRC - dash;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 6,
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      width: 64,
+      height: 64
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "64",
+    height: "64",
+    style: {
+      transform: 'rotate(-90deg)'
+    }
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: "32",
+    cy: "32",
+    r: _RING_R,
+    fill: "none",
+    stroke: C.bgEl,
+    strokeWidth: "5"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "32",
+    cy: "32",
+    r: _RING_R,
+    fill: "none",
+    stroke: color,
+    strokeWidth: "5",
+    strokeDasharray: "".concat(dash, " ").concat(gap),
+    strokeLinecap: "round"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: C.text,
+      lineHeight: 1
+    }
+  }, value), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      color: C.textSec,
+      lineHeight: 1,
+      marginTop: 1
+    }
+  }, "g"))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.label,
+      color: C.textSec,
+      textAlign: 'center'
+    }
+  }, label));
+};
+
+// ─── ScreenHeader ──────────────────────────────────────────────────────────────
+// Logo always mathematically centred via position:absolute — immune to left/right width.
+// left / right: pass any ReactNode. Omit either and a 28px spacer balances it.
+const ScreenHeader = ({
+  left,
+  right
+}) => /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  style: {
+    position: 'relative',
+    height: 52,
+    paddingLeft: S.frame,
+    paddingRight: S.frame,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0
+  }
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    zIndex: 1,
+    minWidth: 28,
+    display: 'flex',
+    alignItems: 'center'
+  }
+}, left || /*#__PURE__*/React.createElement("div", {
+  style: {
+    width: 28
+  }
+})), /*#__PURE__*/React.createElement("div", {
+  style: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none'
+  }
+}, /*#__PURE__*/React.createElement("span", {
+  style: {
+    ...T.logo,
+    color: C.text,
+    letterSpacing: -0.3
+  }
+}, "All", /*#__PURE__*/React.createElement("span", {
+  style: {
+    color: C.accent
+  }
+}, "$"), "orted")), /*#__PURE__*/React.createElement("div", {
+  style: {
+    zIndex: 1,
+    minWidth: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end'
+  }
+}, right || /*#__PURE__*/React.createElement("div", {
+  style: {
+    width: 28
+  }
+}))), /*#__PURE__*/React.createElement("div", {
+  style: {
+    height: 1,
+    background: C.border,
+    flexShrink: 0
+  }
+}));
+
+// ─── ScreenFooter ──────────────────────────────────────────────────────────────
+// minHeight locks the border at the same Y position regardless of content.
+// center: vertically + horizontally centres content (use for brand tagline / hint text).
+const ScreenFooter = ({
+  children,
+  center = false
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    padding: "".concat(S.ftPadT, "px ").concat(S.frame, "px ").concat(S.ftPadB, "px"),
+    borderTop: "1px solid ".concat(C.border),
+    flexShrink: 0,
+    boxSizing: 'border-box',
+    minHeight: S.ftPadT + 58 + S.ftPadB + 1,
+    // border-box: total height = 91px
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: center ? 'center' : 'flex-start',
+    alignItems: center ? 'center' : 'stretch'
+  }
+}, children);
+
+// ─── TapRow ────────────────────────────────────────────────────────────────────
+// Tappable card row — used in CartReady and WeekComplete
+const TapRow = ({
+  label,
+  onPress
+}) => /*#__PURE__*/React.createElement("div", {
+  onClick: onPress,
+  style: {
+    background: C.bgSec,
+    border: "1px solid ".concat(C.border),
+    borderRadius: 12,
+    padding: '13px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    cursor: 'pointer',
+    width: '100%'
+  }
+}, /*#__PURE__*/React.createElement("span", {
+  style: {
+    ...T.body,
+    color: C.text
+  }
+}, label), /*#__PURE__*/React.createElement("span", {
+  style: {
+    color: C.textHint,
+    fontSize: 18,
+    lineHeight: 1
+  }
+}, "\u203A"));
+
+// ─── BrandTagline ──────────────────────────────────────────────────────────────
+// Shared footer signature for non-CTA screens. Use inside <ScreenFooter center>.
+const BrandTagline = () => /*#__PURE__*/React.createElement("span", {
+  style: {
+    ...T.hint,
+    fontSize: 14,
+    color: C.textHint
+  }
+}, /*#__PURE__*/React.createElement("span", {
+  style: {
+    color: C.accent
+  }
+}, "Plan"), ' it. ', /*#__PURE__*/React.createElement("span", {
+  style: {
+    color: C.accent
+  }
+}, "Shop"), ' it. ', /*#__PURE__*/React.createElement("span", {
+  style: {
+    color: C.accent
+  }
+}, "Cook"), ' it.');
+
+// ─── SheetHandle ───────────────────────────────────────────────────────────────
+// Standard grab-pill for every bottom sheet. Pass closeFn to enable swipe-down-to-dismiss.
+const SheetHandle = ({
+  closeFn, swipeDismissFn
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '12px 0 8px',
+    flexShrink: 0,
+    cursor: closeFn ? 'grab' : 'default',
+    touchAction: 'none'
+  },
+  onTouchStart: closeFn ? e => {
+    e.currentTarget.parentNode._sy = e.touches[0].clientY;
+  } : undefined,
+  onTouchMove: closeFn ? e => {
+    const s = e.currentTarget.parentNode;
+    const dy = Math.max(0, e.touches[0].clientY - (s._sy || 0));
+    s.style.transform = 'translateY(' + dy + 'px)';
+    s.style.transition = 'none';
+  } : undefined,
+  onTouchEnd: closeFn ? e => {
+    const s = e.currentTarget.parentNode;
+    const dy = Math.max(0, e.changedTouches[0].clientY - (s._sy || 0));
+    if (dy > 80) {
+      s.style.transform = 'translateY(100vh)';
+      s.style.transition = 'transform 0.22s ease-in';
+      const bd = s.previousElementSibling;
+      if (bd) { bd.style.opacity = '0'; bd.style.transition = 'opacity 0.22s'; }
+      // Use raw dismiss fn to skip closeWithAnim — CSS animations override inline styles
+      // so calling closeWithAnim would snap the sheet back with its slideDown keyframe
+      setTimeout(swipeDismissFn || closeFn, 210);
+    } else {
+      s.style.transform = 'translateY(0)';
+      s.style.transition = 'transform 0.18s ease';
+      setTimeout(() => { s.style.transform = ''; s.style.transition = ''; }, 200);
+    }
+  } : undefined
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    background: C.border
+  }
+}));
+
+// ─── Divider ───────────────────────────────────────────────────────────────────
+// 1px C.border rule. No margin — surrounding elements own their spacing.
+// Use everywhere: between sheet sections, under cooking-for, etc.
+const Divider = () => /*#__PURE__*/React.createElement("div", {
+  style: {
+    height: 1,
+    background: C.border,
+    flexShrink: 0
+  }
+});
+
+// ─── scaleQty ──────────────────────────────────────────────────────────────────
+// Scales a quantity string by factor. Only touches raw SI amounts (g/ml/kg/l) and
+// plain counts. Purchase units (bottle, bag, jar, pack, drum…) are left unchanged.
+const scaleQty = (q, factor) => {
+  if (!q || Math.abs(factor - 1) < 0.05) return q;
+  // Weight/volume: "600g", "250ml", "1.5kg", "150ml"
+  const si = q.match(/^([\d.]+)\s*(g|ml|kg|l)\b/i);
+  if (si) {
+    const num = parseFloat(si[1]);
+    const unit = si[2].toLowerCase();
+    let scaled = num * factor;
+    if (unit === 'kg' || unit === 'l') {
+      scaled = Math.round(scaled * 10) / 10; // e.g. 1.5kg → 1.1kg
+    } else {
+      scaled = Math.max(5, Math.round(scaled / 5) * 5); // round to nearest 5g/5ml
+    }
+    return "".concat(scaled).concat(unit);
+  }
+  // Plain integer count: "4", "1", "6"
+  const cnt = q.match(/^(\d+)$/);
+  if (cnt) return String(Math.max(1, Math.round(parseFloat(cnt[1]) * factor)));
+  // Purchase unit or complex string — return unchanged
+  return q;
+};
+
+// ─── ItemRow ───────────────────────────────────────────────────────────────────
+// Module-level so React doesn't unmount/remount on every parent render (prevents scroll-reset).
+// Props: item {n, q, price?}, excluded map, portScale number, onToggle(name) fn.
+// Logic: excluded=false → clean (in cart);  excluded=true → gray + strikethrough + ✕ (removed)
+const ItemRow = ({
+  item,
+  excluded,
+  portScale,
+  onToggle
+}) => {
+  const isExcl = !!excluded[item.n];
+  const factor = Math.max(portScale / 2, 0.5);
+  const scaledPrice = item.price ? (item.price * factor).toFixed(2) : null;
+  const displayQty = scaleQty(item.q, factor); // live-scales g/ml/counts; leaves units unchanged
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: () => onToggle(item.n),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: '10px 14px',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      border: "1.5px solid ".concat(isExcl ? C.textHint : C.border),
+      background: isExcl ? C.bgEl : 'transparent',
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.15s'
+    }
+  }, isExcl && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 10,
+      fontWeight: 800,
+      lineHeight: 1
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      alignItems: 'baseline',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: isExcl ? C.textHint : C.text,
+      textDecoration: isExcl ? 'line-through' : 'none',
+      transition: 'color 0.15s'
+    }
+  }, item.n), displayQty && /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.hint,
+      color: isExcl ? C.textHint : C.textSec,
+      transition: 'color 0.15s'
+    }
+  }, displayQty)), scaledPrice && /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.meta,
+      color: isExcl ? C.textHint : C.textSec,
+      flexShrink: 0,
+      transition: 'color 0.15s'
+    }
+  }, "\u20AC", scaledPrice));
+};
+
+// ─── Main App ──────────────────────────────────────────────────────────────────
+function AllSortedPrototype() {
+  // Navigation
+  const [screen, setScreen] = useState('splash');
+  const screenStack = useRef([]);
+
+  // Global
+  const [isPremium, setIsPremium] = useState(false);
+  const [selectedDiet, setDiet] = useState('balanced');
+  const [allergens, setAllergens] = useState([]);
+  const [pendingDiet, setPendingDiet] = useState('balanced');
+  const [pendingAllergens, setPendingAllergens] = useState([]);
+  const [gdpr, setGdpr] = useState(false);
+
+  // Plan
+  const [planVersion, setPlanVersion] = useState('A');
+  const [activePlan, setActivePlan] = useState(PLAN_A);
+  const [mealOrder, setOrder] = useState([0, 1, 2, 3, 4, 5, 6]);
+  const [dayOn, setDayOn] = useState(Array(7).fill(true));
+  const [swapPos, setSwapPos] = useState(Array(7).fill(0));
+  const [regenUsed, setRegenUsed] = useState(0);
+  const [dragSrcIdx, setDragSrcIdx] = useState(null); // origin slot — fixed for the whole gesture
+  const [dragDeltaY, setDragDeltaY] = useState(0);    // pixel offset following the finger
+  const dragStartY = useRef(0);
+  const dragSrcIdxRef = useRef(null);  // mirrors dragSrcIdx for native handlers
+  const dragDeltaYRef = useRef(0);     // mirrors dragDeltaY for use in onEnd
+  const dragCardH = useRef(96);        // measured card slot height (set on drag start)
+  const planCardsRef = useRef(null);
+  const [shakeIdx, setShakeIdx] = useState(null);
+  const [landingIdx, setLandingIdx] = useState(null); // slot that plays the "settle" animation after drop
+  const landingTimerRef = useRef(null);               // clears landingIdx after animation completes
+  const landingOffsetRef = useRef(0);                 // how far from dest's natural position the user released
+  const swipeStartRef = useRef(null);
+  const pendingDragRef = useRef(null); // handle touch waiting for direction: {idx, startX, startY}
+  const swapPosRef = useRef(swapPos);
+  useEffect(() => { swapPosRef.current = swapPos; }, [swapPos]);
+  const [closingSheet, setClosingSheet] = useState(null);
+  const [sheetAnimDone, setSheetAnimDone] = useState({});
+  const markAnimDone = (name) => setTimeout(() => setSheetAnimDone(p => ({...p, [name]: true})), 350);
+  const closeWithAnim = (name, fn) => {
+    setClosingSheet(name);
+    setTimeout(() => { fn(); setClosingSheet(null); setSheetAnimDone(p => ({...p, [name]: false})); }, 280);
+  };
+  const [savedSet, setSavedSet] = useState(new Set([0, 2, 7]));
+  const [deliveryDay, setDeliveryDay] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
+  const [isFrozen, setIsFrozen] = useState(false);
+
+  // Portions (L/M/S model)
+  const [cookFor, setCookFor] = useState(2);
+  const [seatSizes, setSeatSizes] = useState(['M', 'M']);
+  const [pendingSeatSizes, setPendingSeatSizes] = useState(['M', 'M']);
+
+  // Shopping
+  const [excluded, setExcluded] = useState(() => Object.fromEntries(STAPLES.map(s => [s.n, true])));
+  const [store, setStore] = useState(null);
+  const [storePick, setStorePick] = useState(null);
+  const [pendingStore, setPendingStore] = useState(null);
+  const [fillUsed, setFillUsed] = useState(0);
+
+  // Injection animation
+  const [injectPct, setInjectPct] = useState(0);
+  const [injectDone, setInjectDone] = useState(false);
+
+  // Overlays
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  // showReinjectionDialog removed — replaced by showFillConfirm
+  const [showWebViewExit, setShowWebViewExit] = useState(false);
+  const [showSavedFilters, setShowSavedFilters] = useState(false);
+  const [showRecipe, setShowRecipe] = useState(false);
+  const [activeRecipe, setActiveRecipe] = useState(null);
+  const [recipeTab, setRecipeTab] = useState('ingredients');
+  const [showStore, setShowStore] = useState(false);
+  const [showPortions, setShowPortions] = useState(false);
+  const [showNewWeek, setShowNewWeek] = useState(false);
+  const [showNewWeekDialog, setShowNewWeekDialog] = useState(false);
+  const [weekCompleteMode, setWeekCompleteMode] = useState('celebration'); // 'celebration' | 'stale-early' | 'stale-late'
+  const [showDayPicker, setShowDayPicker] = useState(false);
+  const [dpMode, setDpMode] = useState('copy');
+  const [copySource, setCopySource] = useState(null);
+  const [showSubs, setShowSubs] = useState(false);
+  const [showMissing, setShowMissing] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [showInsightSheet, setShowInsightSheet] = useState(false);
+  const [historyWeek, setHistoryWeek] = useState(null);
+  const [historyInsightWeek, setHistoryInsightWeek] = useState(null);
+  const [cartFilled, setCartFilled] = useState(false);
+  const [showFillConfirm, setShowFillConfirm] = useState(false);
+  const [showNextWeekDialog, setShowNextWeekDialog] = useState(false);
+  const [showReuseConfirm, setShowReuseConfirm] = useState(false);
+  const [showFreshConfirm, setShowFreshConfirm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [notifs, setNotifs] = useState(true);
+  const [aiText, setAiText] = useState('');
+  const [toast, setToast] = useState(null);
+  const showToast = msg => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2200);
+  };
+
+  // Saved screen filters
+  const [savedCuisines, setSavedCuisines] = useState([]);
+  const [savedTime, setSavedTime] = useState('any');
+  // Pending filter state (used inside filter sheet before Apply is tapped)
+  const [pendingCuisines, setPendingCuisines] = useState([]);
+  const [pendingTime, setPendingTime] = useState('any');
+
+  // Derived
+  const maxSwaps = isPremium ? 3 : 1;
+  const maxRegens = isPremium ? 3 : 1;
+  const regenLeft = maxRegens - regenUsed;
+  const maxFills = isPremium ? 4 : 1;
+  const totalPeople = cookFor;
+  // Live preview while sheet open — uses pending sizes; committed sizes otherwise
+  const activeSizes = showPortions ? pendingSeatSizes : seatSizes;
+  const portScale = activeSizes.reduce((a, s) => a + (s === 'L' ? 1.30 : s === 'S' ? 0.75 : 1.00), 0);
+  const go = (s, opts = {}) => {
+    if (!opts.back && s !== 'historydetail' && screen !== 'historydetail') screenStack.current = [...screenStack.current, screen];
+    setScreen(s);
+    setShowRecipe(false);
+    setShowStore(false);
+    setShowNewWeek(false);
+    setShowDayPicker(false);
+    setShowSubs(false);
+    setShowFillConfirm(false);
+    setShowNextWeekDialog(false);
+    setShowReuseConfirm(false);
+    setShowFreshConfirm(false);
+    setRecipeTab('ingredients');
+    if (!opts.keepEditMode) setEditMode(false);
+  };
+  const goBack = () => {
+    const stack = screenStack.current;
+    const prev = stack.length > 0 ? stack[stack.length - 1] : 'plan';
+    screenStack.current = stack.slice(0, -1);
+    go(prev, { back: true });
+  };
+  const goEdit = s => {
+    screenStack.current = [...screenStack.current, screen];
+    setScreen(s);
+    setEditMode(true);
+    // Initialise pending state so edits don't affect live values unless saved
+    setPendingDiet(selectedDiet);
+    setPendingAllergens([...allergens]);
+  };
+  const getMealAtDay = i => {
+    const base = activePlan[mealOrder[i]];
+    if (swapPos[i] > 0) {
+      const swapId = base.swaps && base.swaps[swapPos[i] - 1];
+      const swapped = swapId != null ? SWAP_POOL.find(r => r.id === swapId) : null;
+      if (swapped) return swapped;
+    }
+    return base;
+  };
+
+  // Auto-advance
+  useEffect(() => {
+    if (screen === 'splash') {
+      const t = setTimeout(() => go('onboarding1', { back: true }), 2200);
+      return () => clearTimeout(t);
+    }
+    if (screen === 'generating') {
+      const t = setTimeout(() => {
+        setIsFrozen(false);
+        setCartFilled(false);
+        go('plan');
+      }, 2800);
+      return () => clearTimeout(t);
+    }
+    if (screen === 'injecting') {
+      setInjectPct(0);
+      setInjectDone(false);
+      const t = setInterval(() => {
+        setInjectPct(p => {
+          if (p >= 100) {
+            clearInterval(t);
+            setInjectDone(true);
+            return 100;
+          }
+          return Math.min(p + 7, 100);
+        });
+      }, 180);
+      return () => clearInterval(t);
+    }
+  }, [screen]);
+
+  // Close all overlays on any screen change
+  useEffect(() => {
+    setShowRecipe(false);
+    setShowStore(false);
+    setShowPortions(false);
+    setShowNewWeek(false);
+    setShowDayPicker(false);
+    setShowSubs(false);
+    setShowMissing(false);
+    setShowShareSheet(false);
+    setShowNewWeekDialog(false);
+    setShowSavedFilters(false);
+    setShowRegenConfirm(false);
+    setShowLogoutDialog(false);
+    setShowDeleteDialog(false);
+    setShowFillConfirm(false);
+    setShowWebViewExit(false);
+    if (screen !== 'historydetail') setHistoryWeek(null);
+  }, [screen]);
+
+  // Sheet animation phase tracking
+  const trackSheetOpen = (name, isOpen) => {
+    if (isOpen) { setSheetAnimDone(p => ({...p, [name]: false})); markAnimDone(name); }
+    else { setSheetAnimDone(p => ({...p, [name]: false})); }
+  };
+  useEffect(() => { trackSheetOpen('savedfilters', showSavedFilters); }, [showSavedFilters]);
+  useEffect(() => { trackSheetOpen('recipe', showRecipe && !!activeRecipe); }, [showRecipe, activeRecipe]);
+  useEffect(() => { trackSheetOpen('store', showStore); }, [showStore]);
+  useEffect(() => { trackSheetOpen('portions', showPortions); }, [showPortions]);
+  useEffect(() => { trackSheetOpen('newweek', showNewWeek); }, [showNewWeek]);
+  useEffect(() => { trackSheetOpen('insight', showInsightSheet || !!historyInsightWeek); }, [showInsightSheet, historyInsightWeek]);
+  useEffect(() => { trackSheetOpen('daypicker', showDayPicker); }, [showDayPicker]);
+  useEffect(() => { trackSheetOpen('subs', showSubs); }, [showSubs]);
+  useEffect(() => { trackSheetOpen('missing', showMissing); }, [showMissing]);
+  useEffect(() => { trackSheetOpen('share', showShareSheet); }, [showShareSheet]);
+
+  // Auto-advance from injecting → cartready once done
+  useEffect(() => {
+    if (injectDone && screen === 'injecting') {
+      const t = setTimeout(() => go('cartready', { back: true }), 600);
+      return () => clearTimeout(t);
+    }
+  }, [injectDone]);
+
+  // Auto-advance from webview → weekcomplete (simulates URL confirmation detection)
+  // Only fires during a real purchase flow (cartFilled=true); review visits post-purchase are left alone
+  useEffect(() => {
+    if (screen === 'webview' && cartFilled) {
+      const t = setTimeout(() => {
+        setWeekCompleteMode('celebration');
+        setCartFilled(false);
+        screenStack.current = [];
+        go('weekcomplete', { back: true });
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [screen, cartFilled]);
+
+  // All plan card touch interactions — native listeners to allow preventDefault
+  // Dep is [screen] not [planCardsRef.current]: refs are null at render time (read before commit),
+  // so planCardsRef.current would always be null in the dep comparison.
+  useEffect(() => {
+    const container = planCardsRef.current;
+    if (!container) return;
+    const getCardH = () => container.getBoundingClientRect().height / 7;
+
+    const startDrag = (idx, clientY) => {
+      // Cancel any in-progress landing animation so a rapid new drag starts clean.
+      if (landingTimerRef.current) { clearTimeout(landingTimerRef.current); landingTimerRef.current = null; }
+      setLandingIdx(null);
+      // Measure actual card slot height (card height + gap) from first card
+      const firstCard = container.querySelector('[data-card-idx="0"]');
+      dragCardH.current = firstCard ? firstCard.getBoundingClientRect().height + 8 : container.getBoundingClientRect().height / 7;
+      dragSrcIdxRef.current = idx;
+      dragStartY.current = clientY;
+      dragDeltaYRef.current = 0;
+      setDragSrcIdx(idx);
+      setDragDeltaY(0);
+    };
+
+    const moveDrag = (clientY) => {
+      if (dragSrcIdxRef.current === null) return;
+      const dy = clientY - dragStartY.current;
+      dragDeltaYRef.current = dy;
+      setDragDeltaY(dy);
+    };
+
+    const endDrag = () => {
+      const src = dragSrcIdxRef.current;
+      if (src === null) return;
+      const capturedDy = dragDeltaYRef.current; // capture before refs are cleared
+      const h = dragCardH.current;
+      const dest = Math.max(0, Math.min(6, src + Math.round(capturedDy / h)));
+      dragSrcIdxRef.current = null;
+      dragDeltaYRef.current = 0;
+      // How far from dest's natural position the finger was at release.
+      // WAAPI will animate the dest card from this offset to 0, giving a smooth "settle"
+      // that starts from where the user actually dropped rather than from the shifted position.
+      landingOffsetRef.current = capturedDy - (dest - src) * h;
+      if (landingTimerRef.current) clearTimeout(landingTimerRef.current);
+      setLandingIdx(dest);
+      landingTimerRef.current = setTimeout(() => { setLandingIdx(null); landingTimerRef.current = null; }, 250);
+      setDragSrcIdx(null);
+      setDragDeltaY(0);
+      if (dest !== src) {
+        const reorder = (arr) => { const n=[...arr]; const [item]=n.splice(src,1); n.splice(dest,0,item); return n; };
+        setOrder(reorder); setDayOn(reorder); setSwapPos(reorder);
+      }
+    };
+
+    const onStart = (e) => {
+      const card = e.target.closest('[data-card-idx]');
+      if (!card) return;
+      const idx = parseInt(card.dataset.cardIdx);
+      const cx = e.touches[0].clientX;
+      const cy = e.touches[0].clientY;
+      const handle = e.target.closest('[data-drag-handle]');
+      if (handle) {
+        e.preventDefault();
+        // Don't commit to drag yet — first touchmove determines direction
+        pendingDragRef.current = { idx, startX: cx, startY: cy };
+      }
+      // Always set swipeStartRef so horizontal handle-swipes also work
+      swipeStartRef.current = { x: cx, y: cy, idx };
+    };
+
+    const onMove = (e) => {
+      // Pending drag: handle was touched but direction not yet committed
+      if (pendingDragRef.current) {
+        const { idx, startX, startY } = pendingDragRef.current;
+        const dx = Math.abs(e.touches[0].clientX - startX);
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        if (dy > dx && dy > 6) {
+          // Vertical → commit to drag.
+          // Use current finger position (not startY) as origin so delta starts at 0 — no jump.
+          pendingDragRef.current = null;
+          swipeStartRef.current = null;
+          e.preventDefault();
+          startDrag(idx, e.touches[0].clientY);
+        } else if (dx > dy && dx > 6) {
+          // Horizontal → let it become a swipe (swipeStartRef already set)
+          pendingDragRef.current = null;
+        } else {
+          e.preventDefault(); // prevent scroll while undecided
+        }
+        return;
+      }
+      if (dragSrcIdxRef.current === null) return;
+      e.preventDefault();
+      moveDrag(e.touches[0].clientY);
+    };
+
+    const onEnd = (e) => {
+      pendingDragRef.current = null; // resolve any uncommitted handle touch
+      const wasDragging = dragSrcIdxRef.current !== null;
+      endDrag();
+      if (wasDragging) return; // don't process as swipe
+      if (!swipeStartRef.current) return;
+      const { x, y, idx } = swipeStartRef.current;
+      swipeStartRef.current = null;
+      const dx = e.changedTouches[0].clientX - x;
+      const dy = e.changedTouches[0].clientY - y;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        const pos = swapPosRef.current[idx];
+        const card = container.querySelector('[data-card-idx="' + idx + '"]');
+        if (!card || card.dataset.hasSwaps !== 'true') return;
+        const maxS = isPremium ? 3 : 1;
+        if (dx < 0) {
+          if (pos >= maxS) { setShakeIdx(idx); setTimeout(() => setShakeIdx(null), 380); }
+          else swapNext(idx);
+        } else {
+          if (pos <= 0) { setShakeIdx(idx); setTimeout(() => setShakeIdx(null), 380); }
+          else swapPrev(idx);
+        }
+      }
+    };
+
+    // Mouse fallbacks for desktop / DevTools simulation
+    const onMouseStart = (e) => {
+      if (!e.target.closest('[data-drag-handle]')) return;
+      e.preventDefault();
+      const card = e.target.closest('[data-card-idx]');
+      if (!card) return;
+      startDrag(parseInt(card.dataset.cardIdx), e.clientY);
+    };
+    const onMouseMove = (e) => { if (dragSrcIdxRef.current !== null) moveDrag(e.clientY); };
+    const onMouseEnd = () => endDrag();
+
+    container.addEventListener('touchstart', onStart, { passive: false });
+    container.addEventListener('touchmove', onMove, { passive: false });
+    container.addEventListener('touchend', onEnd);
+    container.addEventListener('mousedown', onMouseStart);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseEnd);
+    return () => {
+      container.removeEventListener('touchstart', onStart);
+      container.removeEventListener('touchmove', onMove);
+      container.removeEventListener('touchend', onEnd);
+      container.removeEventListener('mousedown', onMouseStart);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseEnd);
+    };
+  // screen as dep: planCardsRef.current is null at render-time (before commit sets it),
+  // so using it as dep means the effect never re-runs. screen changes trigger re-render
+  // after which refs are committed, so planCardsRef.current is set when effect runs.
+  }, [screen, isPremium]);
+
+  // Landing animation — runs after React commits the post-drop state (all cards at transform:0, transition:none).
+  // WAAPI animates the dest card from where the user released (landingOffsetRef) to 0, starting with
+  // the dragged-card scale (1.02) so the settle looks like the card coming to rest from your finger.
+  useLayoutEffect(() => {
+    if (landingIdx === null) return;
+    const container = planCardsRef.current;
+    if (!container) return;
+    const destCard = container.querySelector('[data-card-idx="' + landingIdx + '"]');
+    if (!destCard) return;
+    const offset = landingOffsetRef.current;
+    destCard.animate(
+      [
+        { transform: 'translateY(' + offset + 'px) scale(1.02)' },
+        { transform: 'translateY(0) scale(1)' }
+      ],
+      { duration: 200, easing: 'ease-out', fill: 'none' }
+    );
+  }, [landingIdx]);
+
+  const regenCore = (resetDays) => {
+    const nextSeed = planVersion === 'A' ? 1 : 0;
+    setActivePlan(buildPlanForUser(selectedDiet, allergens, nextSeed));
+    setPlanVersion(v => v === 'A' ? 'B' : 'A');
+    setOrder([0, 1, 2, 3, 4, 5, 6]);
+    setSwapPos(Array(7).fill(0));
+    if (resetDays) setDayOn(Array(7).fill(true));
+    setRegenUsed(r => r + 1);
+    const initExcl = {};
+    STAPLES.forEach(s => {
+      initExcl[s.n] = true;
+    });
+    setExcluded(initExcl);
+    setShowNewWeek(false);
+    setShowRegenConfirm(false);
+    go('generating');
+  };
+  const regen = () => regenCore(false);
+  const regenFreshWeek = () => regenCore(true);
+  const toggleDay = i => setDayOn(p => {
+    const n = [...p];
+    n[i] = !n[i];
+    return n;
+  });
+  // Bounds check is inside the updater so it always reads fresh state (no stale closure issue)
+  const swapNext = i => setSwapPos(p => {
+    if (p[i] >= maxSwaps) return p;
+    const n = [...p]; n[i]++; return n;
+  });
+  const swapPrev = i => setSwapPos(p => {
+    if (p[i] <= 0) return p;
+    const n = [...p]; n[i]--; return n;
+  });
+  const toggleSaved = id => setSavedSet(p => {
+    const n = new Set(p);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const toggleAllergen = id => setAllergens(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  // All shopping items + any staples the user has tapped to include
+  const totalEstimate = [...Object.values(buildShoppingList(activePlan, mealOrder, dayOn, swapPos)).flat(), ...STAPLES].filter(item => !excluded[item.n]).reduce((sum, item) => sum + item.price * Math.max(portScale / 2, 0.5), 0);
+
+  // ─── Delivery day date helpers ─────────────────────────────────────────────
+  const cardDate = i => {
+    const d = new Date(deliveryDay);
+    d.setDate(d.getDate() + i);
+    return d;
+  };
+  const cardLabel = i => {
+    const d = cardDate(i);
+    return "".concat(DAY_SHORT[d.getDay()].toUpperCase(), " ").concat(d.getDate());
+  };
+  const monthBadge = () => {
+    const s = deliveryDay.getMonth(),
+      e = cardDate(6).getMonth();
+    return s === e ? MONTH_SHORT[s] : "".concat(MONTH_SHORT[s], " \xB7 ").concat(MONTH_SHORT[e]);
+  };
+  const weekRange = () => {
+    const s = deliveryDay,
+      e = cardDate(6);
+    return s.getMonth() === e.getMonth() ? "Week of ".concat(s.getDate(), "\u2013").concat(e.getDate(), " ").concat(MONTH_SHORT[s.getMonth()]) : "Week of ".concat(s.getDate(), " ").concat(MONTH_SHORT[s.getMonth()], " \u2013 ").concat(e.getDate(), " ").concat(MONTH_SHORT[e.getMonth()]);
+  };
+
+  // History date range helper (takes a delivery date, returns "12–18 May" format)
+  const pastWeekRange = delivery => {
+    const end = new Date(delivery);
+    end.setDate(end.getDate() + 6);
+    return delivery.getMonth() === end.getMonth() ? "".concat(delivery.getDate(), "\u2013").concat(end.getDate(), " ").concat(MONTH_SHORT[end.getMonth()]) : "".concat(delivery.getDate(), " ").concat(MONTH_SHORT[delivery.getMonth()], " \u2013 ").concat(end.getDate(), " ").concat(MONTH_SHORT[end.getMonth()]);
+  };
+
+  // ─── Shared components ───────────────────────────────────────────────────────
+
+  const Btn = ({
+    label,
+    onPress,
+    active = true,
+    ghost = false,
+    danger = false,
+    small = false
+  }) => /*#__PURE__*/React.createElement("button", {
+    onClick: active ? onPress : undefined,
+    style: {
+      background: ghost ? C.bgEl : danger ? C.error + '22' : active ? C.accent : C.bgEl,
+      color: ghost ? C.textSec : danger ? C.error : active ? C.white : C.textHint,
+      border: 'none',
+      borderRadius: 999,
+      padding: small ? '8px 16px' : '20px 20px',
+      ...(small ? T.meta : T.bodyMed),
+      ...(small ? {} : {
+        fontSize: 16
+      }),
+      cursor: active ? 'pointer' : 'default',
+      width: small ? 'auto' : '100%',
+      opacity: active ? 1 : 0.4,
+      transition: 'all 0.15s',
+      textAlign: 'center'
+    }
+  }, label);
+  const Toggle = ({
+    on,
+    onToggle,
+    disabled
+  }) => /*#__PURE__*/React.createElement("div", {
+    onClick: disabled ? undefined : onToggle,
+    style: {
+      width: 36,
+      height: 20,
+      borderRadius: 10,
+      background: disabled ? on ? C.accent + '66' : C.border : on ? C.accent : C.border,
+      cursor: disabled ? 'default' : 'pointer',
+      position: 'relative',
+      transition: 'background 0.2s',
+      flexShrink: 0,
+      opacity: disabled ? 0.5 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: 2,
+      left: on ? 18 : 2,
+      width: 16,
+      height: 16,
+      borderRadius: '50%',
+      background: C.white,
+      transition: 'left 0.2s',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+    }
+  }));
+  const Stepper = ({
+    label,
+    value,
+    onDec,
+    onInc
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 5,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.label,
+      color: C.textSec
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onDec,
+    disabled: value <= 0,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: value > 0 ? C.bgEl : C.border,
+      border: "1px solid ".concat(C.border),
+      color: value > 0 ? C.text : C.textHint,
+      cursor: value > 0 ? 'pointer' : 'default',
+      fontSize: 18,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 700
+    }
+  }, "\u2212"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: C.text,
+      minWidth: 20,
+      textAlign: 'center'
+    }
+  }, value), /*#__PURE__*/React.createElement("button", {
+    onClick: onInc,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: C.bgEl,
+      border: "1px solid ".concat(C.border),
+      color: C.text,
+      cursor: 'pointer',
+      fontSize: 18,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 700
+    }
+  }, "+")));
+
+
+  // Full macro bar for recipe sheet macros tab
+  const MacroBar = ({
+    label,
+    value,
+    color,
+    max
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.textSec
+    }
+  }, label), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: 600,
+      color
+    }
+  }, value, "g")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 6,
+      background: C.bgEl,
+      borderRadius: 3,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: '100%',
+      width: "".concat(Math.min(value / max * 100, 100), "%"),
+      background: color,
+      borderRadius: 3
+    }
+  })));
+
+  // ─── SCREENS ──────────────────────────────────────────────────────────────────
+
+  // 1. Splash
+  const Splash = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      borderRadius: 22,
+      background: C.accentMuted,
+      border: "2px solid ".concat(C.accent),
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 42
+    }
+  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      fontWeight: 800,
+      color: C.text,
+      letterSpacing: -0.5
+    }
+  }, "AllSorted"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      color: C.textSec
+    }
+  }, "Plan it. Shop it. Cook it."));
+
+  // 2. Onboarding slides
+  const Onboarding = ({
+    slide
+  }) => {
+    const data = [{
+      emoji: '📅',
+      title: 'Your week, planned.',
+      body: "Tell us how you eat and what you avoid.\nWe'll plan 7 dinners around it.\nFresh every week."
+    }, {
+      emoji: '🛒',
+      title: 'One tap to the trolley.',
+      body: "Your list goes to Tesco, Dunnes, or SuperValu.\nPick a delivery day — we lock the plan in.\nNo typing. No forgetting."
+    }, {
+      emoji: '✨',
+      title: 'Free to start.\nPowerful to grow.',
+      body: 'One free cart fill included — no card required.\nPremium unlocks 4 fills a month.\nFull recipe library too.'
+    }];
+    const d = data[slide - 1];
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: "0 ".concat(S.frame, "px")
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 82,
+        marginBottom: 24,
+        lineHeight: 1
+      }
+    }, d.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 26,
+        fontWeight: 700,
+        color: C.text,
+        textAlign: 'center',
+        marginBottom: 12,
+        whiteSpace: 'pre-line',
+        lineHeight: 1.25
+      }
+    }, d.title), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        color: C.textSec,
+        textAlign: 'center',
+        lineHeight: 1.8,
+        whiteSpace: 'pre-line'
+      }
+    }, d.body)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 6,
+        paddingBottom: 14
+      }
+    }, [1, 2, 3].map(i => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        width: i === slide ? 22 : 7,
+        height: 7,
+        borderRadius: 4,
+        background: i === slide ? C.accent : C.border,
+        transition: 'width 0.3s'
+      }
+    }))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: slide === 3 ? 'Get Started' : 'Next',
+      onPress: () => go(slide < 3 ? "onboarding".concat(slide + 1) : 'auth')
+    })));
+  };
+
+  // 3. Auth
+  const Auth = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: "0 ".concat(S.frame, "px")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 64,
+      marginBottom: 20,
+      lineHeight: 1
+    }
+  }, "\uD83C\uDF7D\uFE0F"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.heading,
+      color: C.text,
+      textAlign: 'center',
+      marginBottom: 6
+    }
+  }, "Let's get you sorted."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.body,
+      color: C.textSec,
+      textAlign: 'center',
+      marginBottom: 36
+    }
+  }, "Plan it. Shop it. Cook it."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => go('pref1'),
+    style: {
+      background: '#000',
+      border: '1px solid #333',
+      color: C.white,
+      borderRadius: 999,
+      padding: '20px 20px',
+      ...T.bodyMed,
+      fontSize: 16,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\uD83C\uDF4E"), " Sign in with Apple"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => go('pref1'),
+    style: {
+      background: C.white,
+      border: 'none',
+      color: '#111',
+      borderRadius: 999,
+      padding: '20px 20px',
+      ...T.bodyMed,
+      fontSize: 16,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\uD83D\uDD35"), " Sign in with Google"))), /*#__PURE__*/React.createElement(ScreenFooter, {
+    center: true
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      fontSize: 14,
+      color: C.textHint,
+      textAlign: 'center',
+      lineHeight: 1.5
+    }
+  }, "By signing in you agree to our ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent
+    }
+  }, "Terms of Service"), " and ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent
+    }
+  }, "Privacy Policy"))));
+
+  // 4. Pref 1 — Diet type
+  const Pref1 = () => {
+    const diets = [{
+      id: 'veg',
+      label: 'Vegetarian',
+      emoji: '🥗'
+    }, {
+      id: 'vegan',
+      label: 'Vegan',
+      emoji: '🌱'
+    }, {
+      id: 'protein',
+      label: 'High Protein',
+      emoji: '🥩'
+    }, {
+      id: 'lowcarb',
+      label: 'Low Carb',
+      emoji: '🥑'
+    }, {
+      id: 'gf',
+      label: 'Gluten-Free',
+      emoji: '🌾'
+    }, {
+      id: 'balanced',
+      label: 'Balanced',
+      emoji: '🍽️'
+    }];
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: editMode ? /*#__PURE__*/React.createElement("button", {
+        onClick: () => goBack(),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 22,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '0 2px',
+          lineHeight: 1
+        }
+      }, "\u2039") : null
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px ".concat(S.frame, "px 0"),
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.heading,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "What's your eating style?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        marginBottom: 20
+      }
+    }, "We'll build every week around it."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 10
+      }
+    }, diets.map(d => /*#__PURE__*/React.createElement("div", {
+      key: d.id,
+      onClick: () => setPendingDiet(d.id),
+      style: {
+        height: 88,
+        background: pendingDiet === d.id ? C.accentMuted : C.bgSec,
+        border: "2px solid ".concat(pendingDiet === d.id ? C.accent : C.border),
+        borderRadius: 14,
+        padding: '0 10px',
+        cursor: 'pointer',
+        textAlign: 'center',
+        transition: 'all 0.2s',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        lineHeight: 1
+      }
+    }, d.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        fontWeight: 600,
+        color: pendingDiet === d.id ? C.accentSoft : C.text
+      }
+    }, d.label))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement(ScreenFooter, null, editMode ? /*#__PURE__*/React.createElement(Btn, {
+      label: "Save",
+      onPress: () => {
+        setDiet(pendingDiet);
+        goBack();
+        showToast('Preferences saved');
+      }
+    }) : /*#__PURE__*/React.createElement(Btn, {
+      label: "Next",
+      onPress: () => go('pref2')
+    })));
+  };
+
+  // 5. Pref 2 — Allergens + GDPR — static layout, no scroll
+  const Pref2 = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, {
+    left: /*#__PURE__*/React.createElement("button", {
+      onClick: () => goBack(),
+      style: {
+        background: 'none',
+        border: 'none',
+        fontSize: 22,
+        cursor: 'pointer',
+        color: C.textSec,
+        padding: '0 2px',
+        lineHeight: 1
+      }
+    }, "\u2039")
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      padding: "20px ".concat(S.frame, "px 0")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.heading,
+      color: C.text,
+      marginBottom: 4
+    }
+  }, "Any foods to avoid?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.body,
+      color: C.textSec,
+      marginBottom: 20
+    }
+  }, "We filter every recipe. Update anytime in Profile."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: 5,
+      marginBottom: 8
+    }
+  }, ALLERGENS.map(a => {
+    const on = pendingAllergens.includes(a.id);
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.id,
+      onClick: () => setPendingAllergens(p => p.includes(a.id) ? p.filter(x => x !== a.id) : [...p, a.id]),
+      style: {
+        height: 60,
+        background: on ? C.accentMuted : C.bgEl,
+        border: "1.5px solid ".concat(on ? C.accent : C.border),
+        borderRadius: 10,
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        position: 'relative',
+        transition: 'all 0.2s'
+      }
+    }, on && /*#__PURE__*/React.createElement("span", {
+      style: {
+        position: 'absolute',
+        top: 4,
+        right: 5,
+        color: C.accent,
+        fontSize: 9,
+        fontWeight: 700
+      }
+    }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        lineHeight: 1
+      }
+    }, a.emoji), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        fontWeight: 600,
+        color: on ? C.accentSoft : C.text,
+        textAlign: 'center'
+      }
+    }, a.label));
+  })), editMode ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '10px 2px'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.meta,
+      color: C.textHint
+    }
+  }, "Your consent is saved. "), /*#__PURE__*/React.createElement("span", {
+    onClick: () => {
+      setAllergens([]);
+      setGdpr(false);
+      go('profile');
+      showToast('Consent withdrawn');
+    },
+    style: {
+      ...T.meta,
+      color: C.error,
+      cursor: 'pointer',
+      textDecoration: 'underline'
+    }
+  }, "Withdraw consent")) : /*#__PURE__*/React.createElement("div", {
+    onClick: () => setGdpr(g => !g),
+    style: {
+      background: gdpr ? C.accentMuted : C.bgSec,
+      border: "1.5px solid ".concat(gdpr ? C.accent : C.border),
+      borderRadius: 10,
+      padding: '11px 14px',
+      cursor: 'pointer',
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      alignItems: 'flex-start'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      border: "2px solid ".concat(gdpr ? C.accent : C.border),
+      background: gdpr ? C.accent : 'transparent',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      marginTop: 1
+    }
+  }, gdpr && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.white,
+      fontSize: 10,
+      fontWeight: 700
+    }
+  }, "\u2713")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      lineHeight: 1.5
+    }
+  }, "I consent to AllSorted storing my intolerance data under GDPR Article 9 to personalise my meal plans. Stored in the EU. Withdraw anytime in Profile."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  })), /*#__PURE__*/React.createElement(ScreenFooter, null, editMode ? /*#__PURE__*/React.createElement(Btn, {
+    label: "Save",
+    onPress: () => {
+      setAllergens([...pendingAllergens]);
+      goBack();
+      showToast('Preferences saved');
+    }
+  }) : /*#__PURE__*/React.createElement(Btn, {
+    label: "Start my first week",
+    active: gdpr,
+    onPress: () => {
+      if (gdpr) {
+        setAllergens([...pendingAllergens]);
+        setDiet(pendingDiet);
+        setActivePlan(buildPlanForUser(pendingDiet, pendingAllergens, planVersion === 'A' ? 0 : 1));
+        go('generating');
+      }
+    }
+  })));
+
+  // 6. Generating
+  const Generating = () => {
+    const isFirstPlan = regenUsed === 0;
+    const title = isFirstPlan ? "Building your week\u2026" : "Let\u2019s try something different\u2026";
+    const subtitle = isFirstPlan ? "7 meals matched to you" : "Here\u2019s another set of meals";
+    return /*#__PURE__*/React.createElement("div", {
+      style: { flex: 1, display: 'flex', flexDirection: 'column' }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, null), /*#__PURE__*/React.createElement("div", {
+      style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 56 }
+    }, "\uD83C\uDF7D\uFE0F"), /*#__PURE__*/React.createElement("div", {
+      style: { ...T.title, color: C.text }
+    }, title), /*#__PURE__*/React.createElement("div", {
+      style: { ...T.body, color: C.textSec }
+    }, subtitle), /*#__PURE__*/React.createElement("div", {
+      style: { display: 'flex', gap: 8, marginTop: 4 }
+    }, [0, 1, 2].map(i => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: { width: 10, height: 10, borderRadius: '50%', background: C.accent, animation: "bounce 0.9s ".concat(i * 0.2, "s infinite ease-in-out") }
+    })))), /*#__PURE__*/React.createElement(ScreenFooter, { center: true }, /*#__PURE__*/React.createElement(BrandTagline, null)));
+  };
+
+  // 7. Plan Screen (home)
+  const PlanScreen = () => {
+    const meals = mealOrder.map((_, i) => getMealAtDay(i));
+    const today0 = new Date();
+    today0.setHours(0, 0, 0, 0);
+    const tonightIdx = Array.from({
+      length: 7
+    }, (_, k) => k).find(k => {
+      const d = cardDate(k);
+      d.setHours(0, 0, 0, 0);
+      return d.toDateString() === today0.toDateString();
+    }) ?? -1;
+    const deliv0 = new Date(deliveryDay);
+    deliv0.setHours(0, 0, 0, 0);
+    const deliveryTomorrow = isFrozen && tonightIdx < 0 && (deliv0 - today0) / 86400000 === 1;
+    const badge = (label, color, truncate) => /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: color + '28',
+        color,
+        borderRadius: 4,
+        padding: '2px 6px',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: 0.2,
+        flexShrink: truncate ? 1 : 0,
+        minWidth: truncate ? 0 : undefined,
+        overflow: truncate ? 'hidden' : undefined,
+        textOverflow: truncate ? 'ellipsis' : undefined,
+        whiteSpace: truncate ? 'nowrap' : undefined,
+      }
+    }, label);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }
+    }, (() => {
+      const crossesMonth = deliveryDay.getMonth() !== cardDate(6).getMonth();
+      const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[deliveryDay.getMonth()], " \u2013 ").concat(MONTH_SHORT[cardDate(6).getMonth()]) : MONTH_SHORT[deliveryDay.getMonth()];
+      return /*#__PURE__*/React.createElement(ScreenHeader, {
+        left: /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }
+        }, isFrozen ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => setShowInsightSheet(true),
+          style: {
+            background: 'none',
+            border: 'none',
+            fontSize: 18,
+            cursor: 'pointer',
+            color: C.textSec,
+            padding: '2px 4px',
+            lineHeight: 1
+          }
+        }, "\u2728") : /*#__PURE__*/React.createElement("button", {
+          onClick: () => setShowNewWeek(true),
+          style: {
+            background: 'none',
+            border: 'none',
+            fontSize: 18,
+            cursor: 'pointer',
+            color: C.textSec,
+            padding: '2px 4px',
+            lineHeight: 1
+          }
+        }, "\ud83d\udd04"), /*#__PURE__*/React.createElement("span", {
+          style: {
+            background: 'transparent',
+            border: "1px solid ".concat(C.border),
+            borderRadius: 20,
+            padding: '2px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            color: C.textSec,
+            whiteSpace: 'nowrap'
+          }
+        }, monthLabel)),
+        right: /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: 'flex',
+            gap: 4
+          }
+        }, /*#__PURE__*/React.createElement("button", {
+          onClick: () => go('saved'),
+          style: {
+            background: 'none',
+            border: 'none',
+            fontSize: 18,
+            cursor: 'pointer',
+            color: C.textSec,
+            padding: '2px 4px',
+            lineHeight: 1
+          }
+        }, "\u2665"), /*#__PURE__*/React.createElement("button", {
+          onClick: () => go('profile'),
+          style: {
+            background: 'none',
+            border: 'none',
+            fontSize: 18,
+            cursor: 'pointer',
+            color: C.textSec,
+            padding: '2px 4px',
+            lineHeight: 1
+          }
+        }, "\u2699\uFE0F"))
+      });
+    })(), /*#__PURE__*/React.createElement("div", {
+      ref: planCardsRef,
+      style: {
+        flex: 1,
+        padding: '6px 12px 6px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        touchAction: 'none'
+      }
+    }, meals.map((meal, i) => {
+      const pos = swapPos[i];
+      const baseMeal = activePlan[mealOrder[i]];
+      const hasSwaps = baseMeal.swaps && baseMeal.swaps.length > 0;
+      const isOff = !dayOn[i];
+      const currentName = meal.name;
+      const currentCuisine = meal.cuisine;
+      const cc = CUISINE_COLOR[currentCuisine] || C.textSec;
+      const tc = timeColor(meal.time);
+      // Allergen conflict — only check base meal (alts have no allergen data in prototype)
+      const mealAllergenIds = meal.allergens || [];
+      const conflictIds = !isOff ? mealAllergenIds.filter(a => allergens.includes(a)) : [];
+      const conflict = conflictIds.length > 0;
+      const conflictLabels = conflictIds.map(a => ALLERGENS.find(x => x.id === a)?.label).filter(Boolean);
+      // Diet type conflict — only base meal, only when day is on
+      const dietConflict = !isOff && (meal.incompatible || []).includes(selectedDiet);
+      const hasConflict = conflict || dietConflict;
+      const isDragging = dragSrcIdx === i;
+      const isShaking = shakeIdx === i;
+      // Proportional shift: neighbour cards move continuously with the drag (no step-function pop).
+      // shift = how much the dragged card has physically overlapped this slot, clamped 0–1.
+      let cardShift = 0;
+      if (dragSrcIdx !== null && !isDragging) {
+        const h = dragCardH.current;
+        const rawSlot = dragSrcIdx + dragDeltaY / h;
+        if (i > dragSrcIdx) {
+          cardShift = -h * Math.max(0, Math.min(1, rawSlot - (i - 1)));
+        } else {
+          cardShift = h * Math.max(0, Math.min(1, (i + 1) - rawSlot));
+        }
+      }
+      const cardTransform = isDragging
+        ? "translateY(".concat(dragDeltaY, "px) scale(1.02)")
+        : "translateY(".concat(cardShift, "px)");
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        'data-card-idx': i,
+        'data-has-swaps': hasSwaps ? 'true' : 'false',
+        style: {
+          background: C.bgSec,
+          borderRadius: 10,
+          opacity: isOff && !isDragging ? 0.4 : 1,
+          transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'transform 0.18s ease-out, opacity 0.2s',
+          border: "1px solid ".concat(hasConflict ? '#EF5350' : isFrozen && i === tonightIdx ? C.accent : deliveryTomorrow && i === 0 ? C.accentSoft : isOff ? C.border : 'transparent'),
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          transform: cardTransform,
+          boxShadow: isDragging ? '0 12px 32px rgba(0,0,0,0.65)' : 'none',
+          zIndex: isDragging ? 10 : 1,
+          position: 'relative',
+          willChange: isDragging ? 'transform' : 'auto',
+          animation: isShaking ? 'shake 0.38s ease' : 'none'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '6px 10px 2px',
+          gap: 7,
+          flex: 1
+        }
+      }, !isFrozen ? /*#__PURE__*/React.createElement("div", {
+        'data-drag-handle': 'true',
+        style: {
+          color: isDragging ? C.accent : C.textSec,
+          fontSize: 15,
+          cursor: 'grab',
+          flexShrink: 0,
+          userSelect: 'none',
+          lineHeight: 1,
+          alignSelf: 'center',
+          touchAction: 'none',
+          padding: '6px 4px'
+        }
+      }, "\u2261") : null, /*#__PURE__*/React.createElement("div", {
+        onClick: () => {
+          if (dragSrcIdx !== null) return;
+          if (!isOff) {
+            setActiveRecipe({
+              meal,
+              mealIdx: meal.id
+            });
+            setRecipeTab('ingredients');
+            setShowRecipe(true);
+          }
+        },
+        style: {
+          alignSelf: 'stretch',
+          aspectRatio: '1',
+          borderRadius: 8,
+          background: C.bgEl,
+          overflow: 'hidden',
+          position: 'relative',
+          flexShrink: 0,
+          cursor: isOff ? 'default' : 'pointer'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 22,
+          opacity: isOff ? 0.4 : 1
+        }
+      }, meal.emoji), meal.photo && /*#__PURE__*/React.createElement("img", {
+        src: meal.photo,
+        alt: "",
+        style: {
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: isOff ? 0.4 : 1
+        },
+        onError: e => {
+          e.target.style.display = 'none';
+        }
+      }), hasConflict && /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: 'absolute',
+          top: 2,
+          left: 2,
+          width: 17,
+          height: 17,
+          borderRadius: '50%',
+          background: '#EF5350',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 9,
+          color: '#fff',
+          fontWeight: 800,
+          lineHeight: 1,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
+        }
+      }, "!")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          justifyContent: 'center',
+          cursor: isOff ? 'default' : 'pointer'
+        },
+        onClick: () => {
+          if (!isOff) {
+            setActiveRecipe({
+              meal,
+              mealIdx: meal.id
+            });
+            setRecipeTab('ingredients');
+            setShowRecipe(true);
+          }
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          overflow: 'hidden'
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          fontWeight: 800,
+          color: isFrozen && i === tonightIdx ? C.accent : deliveryTomorrow && i === 0 ? C.accentSoft : isOff ? C.textHint : C.textSec,
+          letterSpacing: 0.8,
+          flexShrink: 0,
+          whiteSpace: 'nowrap'
+        }
+      }, isFrozen && i === tonightIdx ? 'TONIGHT' : deliveryTomorrow && i === 0 ? 'TOMORROW' : cardLabel(i)), badge('⏱ ' + parseInt(meal.time), tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          ...T.bodyMed,
+          color: isOff ? C.textSec : C.text,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          lineHeight: 1.2
+        }
+      }, currentName), conflict && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          overflow: 'hidden',
+          flexShrink: 0
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          flexShrink: 1
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#EF535088',
+          fontWeight: 700,
+          fontSize: 10,
+          letterSpacing: 0.8,
+          textTransform: 'uppercase'
+        }
+      }, "Contains: "), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#EF5350',
+          fontWeight: 600
+        }
+      }, conflictLabels.slice(0, 3).join(', '))), conflictLabels.length > 3 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#EF5350',
+          background: '#EF535022',
+          borderRadius: 4,
+          padding: '1px 4px',
+          flexShrink: 0
+        }
+      }, "+", conflictLabels.length - 3)), dietConflict && !conflict && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          overflow: 'hidden',
+          flexShrink: 0
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          flexShrink: 1
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#EF535088',
+          fontWeight: 700,
+          fontSize: 10,
+          letterSpacing: 0.8,
+          textTransform: 'uppercase'
+        }
+      }, "Diet: "), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#EF5350',
+          fontWeight: 600
+        }
+      }, "Not ", DIET_LABELS[selectedDiet])))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexShrink: 0,
+          alignSelf: 'center'
+        }
+      }, !isFrozen && /*#__PURE__*/React.createElement("button", {
+        onClick: e => {
+          e.stopPropagation();
+          if (!isOff) {
+            setDpMode('copy');
+            setCopySource(i);
+            setShowDayPicker(true);
+          }
+        },
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 14,
+          cursor: isOff ? 'default' : 'pointer',
+          opacity: isOff ? 0.2 : 0.55,
+          color: C.textSec,
+          padding: 0,
+          lineHeight: 1
+        }
+      }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement(Toggle, {
+        on: !isOff,
+        onToggle: isFrozen ? undefined : () => toggleDay(i),
+        disabled: isFrozen
+      }))), !isFrozen && hasSwaps ? /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 5,
+          padding: '3px 10px 5px',
+          opacity: isOff ? 0.25 : 1,
+          transition: 'opacity 0.25s'
+        }
+      }, Array.from({
+        length: maxSwaps + 1
+      }).map((_, di) => /*#__PURE__*/React.createElement("div", {
+        key: di,
+        onClick: isOff ? undefined : () => setSwapPos(p => {
+          const n = [...p];
+          n[i] = di;
+          return n;
+        }),
+        style: {
+          width: di === pos ? 14 : 6,
+          height: 5,
+          borderRadius: 3,
+          background: di === pos ? C.accent : C.border,
+          transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'all 0.2s',
+          cursor: isOff ? 'default' : 'pointer'
+        }
+      }))) : /*#__PURE__*/React.createElement("div", {
+        style: {
+          height: 8
+        }
+      }));
+    })), isFrozen ? /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (isFrozen && cartFilled) {
+          setShowNextWeekDialog(true);
+          return;
+        }
+        const deliveryPassed = (deliv0 - today0) / 86400000 < 0;
+        setWeekCompleteMode(deliveryPassed ? 'stale-late' : 'stale-early');
+        go('weekcomplete');
+      },
+      style: {
+        flex: 1,
+        background: C.bgEl,
+        border: 'none',
+        borderRadius: 999,
+        color: C.textSec,
+        ...T.bodyMed,
+        fontSize: 14,
+        cursor: 'pointer',
+        padding: '20px 8px',
+        textAlign: 'center'
+      }
+    }, "Next week"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => cartFilled ? go('webview') : go('shop'),
+      style: {
+        flex: 2,
+        background: C.accent,
+        border: 'none',
+        borderRadius: 999,
+        color: C.white,
+        ...T.bodyMed,
+        fontSize: 16,
+        cursor: 'pointer',
+        padding: '20px 16px',
+        textAlign: 'center'
+      }
+    }, cartFilled ? (store ? "View ".concat(store, " Cart") : 'View Cart') : "Shopping List"))) : /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: "Shopping List",
+      onPress: () => {
+        if (dayOn.every(d => !d)) {
+          showToast('Turn on at least one day first.');
+          return;
+        }
+        go('shop');
+      }
+    })), showNextWeekDialog && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 270,
+        background: C.bgSec,
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: "1px solid ".concat(C.border)
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '18px 16px 14px',
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.text,
+        marginBottom: 6
+      }
+    }, "Cart not ordered yet"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        lineHeight: 1.5
+      }
+    }, "You've filled your cart but haven't ordered yet. Plan next week anyway?")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        borderTop: "1px solid ".concat(C.border),
+        display: 'flex'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowNextWeekDialog(false),
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.text,
+        cursor: 'pointer',
+        borderRight: "1px solid ".concat(C.border)
+      }
+    }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        setShowNextWeekDialog(false);
+        setCartFilled(false);
+        const deliveryPassed = (deliv0 - today0) / 86400000 < 0;
+        setWeekCompleteMode(deliveryPassed ? 'stale-late' : 'stale-early');
+        go('weekcomplete');
+      },
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.accent,
+        cursor: 'pointer'
+      }
+    }, "Plan next week")))));
+  };
+
+  // 8. Shopping List
+  const ShopScreen = () => {
+    const shopping = buildShoppingList(activePlan, mealOrder, dayOn, swapPos);
+    const allItems = [...Object.values(shopping).flat(), ...STAPLES];
+    const includedCount = allItems.filter(item => !excluded[item.n]).length;
+    const fillAvailable = fillUsed < maxFills;
+    const cycleSeat = i => setSeatSizes(prev => {
+      const next = [...prev];
+      next[i] = next[i] === 'M' ? 'L' : next[i] === 'L' ? 'S' : 'M';
+      return next;
+    });
+    const addSeat = () => {
+      if (cookFor >= 8) return;
+      setCookFor(n => n + 1);
+      setSeatSizes(p => [...p, 'M']);
+    };
+    const remSeat = () => {
+      if (cookFor <= 1) return;
+      setCookFor(n => n - 1);
+      setSeatSizes(p => p.slice(0, -1));
+    };
+    const toggleItem = n => setExcluded(p => ({
+      ...p,
+      [n]: !p[n]
+    }));
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => goBack(),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 22,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '0 2px',
+          lineHeight: 1
+        }
+      }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          background: 'transparent',
+          border: "1px solid ".concat(fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.border),
+          borderRadius: 20,
+          padding: '2px 8px',
+          fontSize: 11,
+          fontWeight: 600,
+          color: fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.textSec,
+          whiteSpace: 'nowrap'
+        }
+      }, fillUsed, "/", maxFills, " fills")),
+      right: store ? /*#__PURE__*/React.createElement("button", {
+        onClick: () => {
+          setPendingStore(store);
+          setStorePick(store);
+          setShowStore(true);
+        },
+        style: {
+          background: 'none',
+          border: "1px solid ".concat(C.accent),
+          borderRadius: 20,
+          padding: '3px 10px',
+          ...T.hint,
+          fontWeight: 600,
+          color: C.accent,
+          cursor: 'pointer'
+        }
+      }, store) : null
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "8px ".concat(S.frame, "px 8px"),
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgSec,
+        borderRadius: 12,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.text
+      }
+    }, "Cooking for"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: remSeat,
+      style: {
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        border: "1px solid ".concat(C.border),
+        background: 'none',
+        color: cookFor <= 1 ? C.textHint : C.text,
+        fontSize: 16,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 1
+      }
+    }, "\u2212"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.bodyMed,
+        color: C.text,
+        minWidth: 14,
+        textAlign: 'center'
+      }
+    }, cookFor), /*#__PURE__*/React.createElement("button", {
+      onClick: addSeat,
+      style: {
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        border: "1px solid ".concat(C.border),
+        background: 'none',
+        color: cookFor >= 8 ? C.textHint : C.text,
+        fontSize: 16,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 1
+      }
+    }, "+")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setPendingSeatSizes([...seatSizes]);
+        setShowPortions(true);
+      },
+      style: {
+        background: C.accent,
+        color: C.white,
+        border: 'none',
+        borderRadius: 20,
+        padding: '6px 14px',
+        ...T.hint,
+        fontWeight: 700,
+        cursor: 'pointer'
+      }
+    }, "Portions"))), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: 'auto',
+        scrollbarWidth: 'none'
+      }
+    }, Object.entries(shopping).map(([cat, items]) => /*#__PURE__*/React.createElement("div", {
+      key: cat
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '8px 14px 4px',
+        position: 'sticky',
+        top: 0,
+        background: C.bg,
+        zIndex: 1
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.label,
+        color: C.textSec
+      }
+    }, cat)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgSec,
+        margin: '0 14px 8px',
+        borderRadius: 10,
+        overflow: 'hidden'
+      }
+    }, items.map((item, i) => /*#__PURE__*/React.createElement("div", {
+      key: item.n,
+      style: {
+        borderBottom: i < items.length - 1 ? "1px solid ".concat(C.border) : 'none'
+      }
+    }, /*#__PURE__*/React.createElement(ItemRow, {
+      item: item,
+      excluded: excluded,
+      portScale: portScale,
+      onToggle: toggleItem
+    })))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '8px 14px 4px',
+        position: 'sticky',
+        top: 0,
+        background: C.bg,
+        zIndex: 1
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.label,
+        color: C.textSec
+      }
+    }, "Staples")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgSec,
+        margin: '0 14px 8px',
+        borderRadius: 10,
+        overflow: 'hidden'
+      }
+    }, STAPLES.map((item, i) => /*#__PURE__*/React.createElement("div", {
+      key: item.n,
+      style: {
+        borderBottom: i < STAPLES.length - 1 ? "1px solid ".concat(C.border) : 'none'
+      }
+    }, /*#__PURE__*/React.createElement(ItemRow, {
+      item: item,
+      excluded: excluded,
+      portScale: portScale,
+      onToggle: toggleItem
+    }))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 8
+      }
+    })), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+        paddingBottom: 10,
+        borderBottom: "1px solid ".concat(C.border)
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: C.textSec
+      }
+    }, includedCount, " of ", allItems.length, " in cart"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.bodyMed,
+        color: C.text
+      }
+    }, "~\u20AC", totalEstimate.toFixed(2))), isFrozen && cartFilled ?
+    /*#__PURE__*/
+    /* Frozen + cart filled — view only, no refill */
+    React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => go('webview'),
+      style: {
+        flex: 1,
+        background: C.accent,
+        border: 'none',
+        borderRadius: 999,
+        color: C.white,
+        ...T.bodyMed,
+        fontSize: 16,
+        cursor: 'pointer',
+        padding: '20px 16px',
+        textAlign: 'center'
+      }
+    }, store ? "View ".concat(store, " Cart") : 'View Cart')) : isFrozen ?
+    /*#__PURE__*/
+    /* Frozen + post-purchase — show cart for review */
+    React.createElement(Btn, {
+      label: store ? "View ".concat(store, " Cart") : 'View Cart',
+      onPress: () => go('webview')
+    }) : !store ? /*#__PURE__*/React.createElement(Btn, {
+      label: "Choose your store",
+      onPress: () => {
+        setPendingStore(null);
+        setStorePick(null);
+        setShowStore(true);
+      }
+    }) : !fillAvailable ?
+    /*#__PURE__*/
+    /* Fills exhausted, no cart yet */
+    React.createElement(Btn, {
+      label: "Upgrade to fill",
+      onPress: () => go('paywall')
+    }) :
+    /*#__PURE__*/
+    /* No cart yet — first fill */
+    React.createElement(Btn, {
+      label: "Fill ".concat(store, " Cart"),
+      onPress: () => setShowFillConfirm(true)
+    })), showFillConfirm && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 270,
+        background: C.bgSec,
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: "1px solid ".concat(C.border)
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '18px 16px 14px',
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.text,
+        marginBottom: 6
+      }
+    }, "Fill your ", store, " cart?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        lineHeight: 1.5
+      }
+    }, "Filling your cart locks this week's plan.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        borderTop: "1px solid ".concat(C.border),
+        display: 'flex'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowFillConfirm(false),
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.text,
+        cursor: 'pointer',
+        borderRight: "1px solid ".concat(C.border)
+      }
+    }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        setShowFillConfirm(false);
+        setFillUsed(f => f + 1);
+        setCartFilled(true);
+        setIsFrozen(true);
+        go('injecting');
+      },
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.accent,
+        cursor: 'pointer'
+      }
+    }, "Fill Cart")))));
+  };
+
+  // 9. Injecting — Stage 1
+  const Injecting = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: "0 ".concat(S.frame + 12, "px"),
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 56
+    }
+  }, "\uD83D\uDED2"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.title,
+      color: C.text
+    }
+  }, "Filling your ", store, " cart\u2026"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.body,
+      color: C.textSec
+    }
+  }, injectPct < 100 ? "Adding items\u2026 ".concat(injectPct, "%") : 'All done!'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: '100%',
+      height: 6,
+      background: C.bgEl,
+      borderRadius: 3,
+      overflow: 'hidden',
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: '100%',
+      width: "".concat(injectPct, "%"),
+      background: C.accent,
+      borderRadius: 3,
+      transition: 'width 0.3s'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: fillUsed === 1 ? C.textSec : C.textHint,
+      textAlign: 'center',
+      marginTop: 6
+    }
+  }, "Don't close the app"), fillUsed <= 1 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textHint,
+      textAlign: 'center',
+      marginTop: 4
+    }
+  }, "You may be asked to sign into ", store || 'your store')), /*#__PURE__*/React.createElement(ScreenFooter, {
+    center: true
+  }, /*#__PURE__*/React.createElement(BrandTagline, null)));
+
+  // 10. Cart Ready — Stage 2 (simplified, always perfect fill)
+  const CartReady = () => {
+    const fillsText = isPremium ? "".concat(fillUsed, " of 4 fills used this month") : 'Lifetime fill used';
+    const backBtn = /*#__PURE__*/React.createElement("button", {
+      onClick: () => goBack(),
+      style: {
+        background: 'none',
+        border: 'none',
+        color: C.textSec,
+        fontSize: 22,
+        cursor: 'pointer',
+        lineHeight: 1,
+        padding: '0 2px'
+      }
+    }, "\u2039");
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: backBtn
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: "0 ".concat(S.frame + 12, "px"),
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 72,
+        height: 72,
+        borderRadius: '50%',
+        background: C.accentMuted,
+        border: "3px solid ".concat(C.accent),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 32
+      }
+    }, "\u2713"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text
+      }
+    }, "Cart ready"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        textAlign: 'center'
+      }
+    }, "All items added to your ", store || 'store', " cart."), /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: C.bgEl,
+        border: "1px solid ".concat(C.border),
+        borderRadius: 20,
+        padding: '3px 10px',
+        ...T.hint,
+        color: C.textSec
+      }
+    }, fillsText)), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: "Go to ".concat(store || 'Store'),
+      onPress: () => go('webview')
+    })));
+  };
+  // 11. WebView — Stage 3 (review cart + pay)
+  const WebViewScreen = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '10px 14px',
+      background: C.bgSec,
+      borderBottom: "1px solid ".concat(C.border),
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => cartFilled ? setShowWebViewExit(true) : goBack(),
+    style: {
+      background: 'none',
+      border: 'none',
+      color: C.textSec,
+      fontSize: 22,
+      cursor: 'pointer',
+      lineHeight: 1,
+      padding: '0 2px'
+    }
+  }, "\u2039"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: C.bgEl,
+      borderRadius: 8,
+      padding: '7px 12px',
+      ...T.hint,
+      color: C.textSec
+    }
+  }, (store || 'tesco')?.toLowerCase(), ".ie/trolley")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      background: '#090909',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#1A1A2E',
+      padding: '10px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20
+    }
+  }, "\uD83C\uDFEA"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text
+    }
+  }, store || 'Store'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: 'auto',
+      background: C.accent + '33',
+      border: "1px solid ".concat(C.accent, "55"),
+      borderRadius: 20,
+      padding: '3px 10px',
+      ...T.hint,
+      color: C.accentSoft
+    }
+  }, "Cart ready \u2713")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      padding: '0 28px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 48
+    }
+  }, "\uD83D\uDED2"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text,
+      textAlign: 'center'
+    }
+  }, "Your cart is ready to review"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      textAlign: 'center',
+      lineHeight: 1.6
+    }
+  }, "Log in to your ", store || 'store', " account, pick a delivery slot and complete checkout."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textHint,
+      textAlign: 'center',
+      lineHeight: 1.5,
+      marginTop: 4
+    }
+  }, "After placing your order, come back to AllSorted."))), showWebViewExit && cartFilled && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 200,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0,0,0,0.5)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 270,
+      background: C.bgSec,
+      borderRadius: 14,
+      overflow: 'hidden',
+      border: "1px solid ".concat(C.border)
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '18px 16px 14px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text,
+      marginBottom: 6
+    }
+  }, "Leave checkout?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      lineHeight: 1.5
+    }
+  }, "Your cart at ", store || 'store', " will still be waiting. Come back any time.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid ".concat(C.border),
+      display: 'flex'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => setShowWebViewExit(false),
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.text,
+      cursor: 'pointer',
+      borderRight: "1px solid ".concat(C.border)
+    }
+  }, "Stay"), /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      setShowWebViewExit(false);
+      goBack();
+    },
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.textSec,
+      cursor: 'pointer'
+    }
+  }, "Leave")))));
+
+  // 12. Week Complete — Stage 4
+  const WeekComplete = () => {
+    const isStale = weekCompleteMode === 'stale-early' || weekCompleteMode === 'stale-late';
+    const isLateSale = weekCompleteMode === 'stale-late';
+    const headline = isLateSale ? 'Your week is up!' : 'Ready for next week?';
+    const subtitle = isLateSale ? 'Time to plan the next one.' : 'Keep your meals or start fresh.';
+
+    // Delivery date label
+    const today1 = new Date();
+    today1.setHours(0, 0, 0, 0);
+    const dDay1 = new Date(deliveryDay);
+    dDay1.setHours(0, 0, 0, 0);
+    const diff1 = Math.round((dDay1 - today1) / (1000 * 60 * 60 * 24));
+    const relLbl = diff1 === 0 ? 'Today' : diff1 === 1 ? 'Tomorrow' : diff1 === -1 ? 'Yesterday' : null;
+    const deliveryFull = relLbl ? "".concat(relLbl, ", ").concat(DAY_SHORT[dDay1.getDay()], " ").concat(dDay1.getDate()) : "".concat(DAY_SHORT[dDay1.getDay()], " ").concat(dDay1.getDate());
+    const reuseThisPlan = () => {
+      setIsFrozen(false);
+      setCartFilled(false);
+      setRegenUsed(0);
+      setDayOn(Array(7).fill(true));
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      setDeliveryDay(d);
+      screenStack.current = [];
+      go('plan', { back: true });
+    };
+    const backBtn = /*#__PURE__*/React.createElement("button", {
+      onClick: () => goBack(),
+      style: {
+        background: 'none',
+        border: 'none',
+        color: C.textSec,
+        fontSize: 22,
+        cursor: 'pointer',
+        lineHeight: 1,
+        padding: '0 2px'
+      }
+    }, "\u2039");
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: isStale ? backBtn : undefined
+    }), isStale ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: "0 ".concat(S.frame, "px"),
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 72,
+        height: 72,
+        borderRadius: '50%',
+        background: C.bgEl,
+        border: "3px solid ".concat(C.border),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 34
+      }
+    }, "\uD83D\uDCC5"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.heading,
+        color: C.text,
+        textAlign: 'center'
+      }
+    }, headline), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.hint,
+        color: C.textSec,
+        textAlign: 'center'
+      }
+    }, subtitle)), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowReuseConfirm(true),
+      style: {
+        flex: 1,
+        background: C.bgEl,
+        border: 'none',
+        borderRadius: 999,
+        color: C.textSec,
+        ...T.bodyMed,
+        fontSize: 14,
+        cursor: 'pointer',
+        padding: '20px 8px',
+        textAlign: 'center'
+      }
+    }, "Reuse plan"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowFreshConfirm(true),
+      style: {
+        flex: 2,
+        background: C.accent,
+        border: 'none',
+        borderRadius: 999,
+        color: C.white,
+        ...T.bodyMed,
+        fontSize: 16,
+        cursor: 'pointer',
+        padding: '20px 16px',
+        textAlign: 'center'
+      }
+    }, "Generate fresh week")))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: "0 ".concat(S.frame, "px"),
+        gap: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 72,
+        height: 72,
+        borderRadius: '50%',
+        background: C.accentMuted,
+        border: "3px solid ".concat(C.accent),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 34
+      }
+    }, "\u2713"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.heading,
+        color: C.text
+      }
+    }, "Week sorted \u2713"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.hint,
+        color: C.textSec,
+        textAlign: 'center'
+      }
+    }, "Your groceries are on their way. Enjoy the week!")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        width: '100%'
+      }
+    }, /*#__PURE__*/React.createElement(TapRow, {
+      label: "\uD83D\uDE9A  Delivery: ".concat(deliveryFull),
+      onPress: () => {
+        setDpMode('delivery');
+        setShowDayPicker(true);
+      }
+    }), /*#__PURE__*/React.createElement(TapRow, {
+      label: "\uD83D\uDCE4  Share your week",
+      onPress: () => setShowShareSheet(true)
+    }))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: "Back to plan",
+      onPress: () => { screenStack.current = []; go('plan', { back: true }); }
+    }))), showReuseConfirm && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 270,
+        background: C.bgSec,
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: "1px solid ".concat(C.border)
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '18px 16px 14px',
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.text,
+        marginBottom: 6
+      }
+    }, "Reuse this plan?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        lineHeight: 1.5
+      }
+    }, "Keep the same 7 meals with a new delivery date.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        borderTop: "1px solid ".concat(C.border),
+        display: 'flex'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowReuseConfirm(false),
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.text,
+        cursor: 'pointer',
+        borderRight: "1px solid ".concat(C.border)
+      }
+    }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        setShowReuseConfirm(false);
+        reuseThisPlan();
+      },
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.accent,
+        cursor: 'pointer'
+      }
+    }, "Reuse plan")))), showFreshConfirm && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 270,
+        background: C.bgSec,
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: "1px solid ".concat(C.border)
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '18px 16px 14px',
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.text,
+        marginBottom: 6
+      }
+    }, "Generate fresh week?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        lineHeight: 1.5
+      }
+    }, "Replace your plan with 7 new meals.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        borderTop: "1px solid ".concat(C.border),
+        display: 'flex'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowFreshConfirm(false),
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.text,
+        cursor: 'pointer',
+        borderRight: "1px solid ".concat(C.border)
+      }
+    }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        setShowFreshConfirm(false);
+        setIsFrozen(false);
+        regenFreshWeek();
+        setRegenUsed(0);
+      },
+      style: {
+        flex: 1,
+        padding: '13px 8px',
+        textAlign: 'center',
+        ...T.bodyMed,
+        color: C.accent,
+        cursor: 'pointer'
+      }
+    }, "Generate")))));
+  };
+
+  // 13. Saved screen
+  const SavedScreen = () => {
+    // Only show recipes the user has actually saved
+    const savedRecipes = ALL_RECIPES.filter(r => savedSet.has(r.id));
+    const hasFilters = savedCuisines.length > 0 || savedTime !== 'any';
+    const filtered = savedRecipes.filter(r => {
+      if (savedCuisines.length > 0 && !savedCuisines.includes(r.cuisine)) return false;
+      if (savedTime === '20' && parseInt(r.time) > 20) return false;
+      if (savedTime === '45' && parseInt(r.time) > 45) return false;
+      return true;
+    });
+    const timeCol = t => {
+      const m = parseInt(t);
+      return m <= 20 ? C.accent : m <= 40 ? C.warning : '#EF6C00';
+    };
+    const openFilters = () => {
+      setPendingCuisines([...savedCuisines]);
+      setPendingTime(savedTime);
+      setShowSavedFilters(true);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: /*#__PURE__*/React.createElement("button", {
+        onClick: () => goBack(),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 22,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '0 2px',
+          lineHeight: 1
+        }
+      }, "\u2039"),
+      right: /*#__PURE__*/React.createElement("button", {
+        onClick: openFilters,
+        style: {
+          background: 'transparent',
+          border: "1px solid ".concat(hasFilters ? C.accent : C.border),
+          borderRadius: 20,
+          padding: '4px 12px',
+          color: hasFilters ? C.accent : C.textSec,
+          ...T.hint,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s'
+        }
+      }, "Filters")
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: 'auto',
+        padding: '14px',
+        scrollbarWidth: 'none'
+      }
+    }, filtered.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '48px 24px',
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 48
+      }
+    }, savedRecipes.length === 0 ? '🤍' : '🔍'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.textSec
+      }
+    }, savedRecipes.length === 0 ? 'No saved recipes yet' : 'No recipes match'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textHint,
+        lineHeight: 1.6
+      }
+    }, savedRecipes.length === 0 ? 'Heart a recipe from your plan to save it here.' : 'Try adjusting your filters.')) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 10
+      }
+    }, filtered.map(r => {
+      const rConflictIds = (r.allergens || []).filter(a => allergens.includes(a));
+      const rConflict = rConflictIds.length > 0;
+      const rDietConflict = (r.incompatible || []).includes(selectedDiet);
+      const rHasConflict = rConflict || rDietConflict;
+      return /*#__PURE__*/React.createElement("div", {
+        key: r.id,
+        onClick: () => {
+          setActiveRecipe({
+            meal: r,
+            mealIdx: r.id,
+            fromSaved: true
+          });
+          setRecipeTab('ingredients');
+          setShowRecipe(true);
+        },
+        style: {
+          background: C.bgSec,
+          borderRadius: 12,
+          overflow: 'hidden',
+          cursor: 'pointer',
+          border: "1px solid ".concat(rHasConflict ? '#EF5350' : 'transparent')
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          height: 90,
+          background: C.bgEl,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 38,
+          position: 'relative'
+        }
+      }, r.photo ? /*#__PURE__*/React.createElement("img", {
+        src: r.photo,
+        alt: "",
+        style: {
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        },
+        onError: e => {
+          e.target.style.display = 'none';
+        }
+      }) : /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 38
+        }
+      }, r.emoji), rHasConflict && /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: 'absolute',
+          top: 7,
+          left: 7,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: '#EF5350',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 11,
+          color: '#fff',
+          fontWeight: 800,
+          lineHeight: 1,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
+        }
+      }, "!"), !isFrozen && /*#__PURE__*/React.createElement("button", {
+        onClick: e => {
+          e.stopPropagation();
+          setActiveRecipe({
+            meal: r,
+            mealIdx: r.id,
+            fromSaved: true
+          });
+          setDpMode('use');
+          setShowDayPicker(true);
+        },
+        style: {
+          position: 'absolute',
+          top: 7,
+          right: 7,
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: C.accent,
+          border: 'none',
+          color: C.white,
+          fontSize: 18,
+          fontWeight: 300,
+          lineHeight: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+        }
+      }, "+")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: '9px 10px 10px'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          ...T.bodyMed,
+          color: C.text,
+          lineHeight: 1.3,
+          marginBottom: 6,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }
+      }, r.name), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          overflow: 'hidden'
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          background: timeCol(r.time) + '28',
+          color: timeCol(r.time),
+          borderRadius: 4,
+          padding: '2px 6px',
+          fontSize: 10,
+          fontWeight: 700,
+          flexShrink: 0
+        }
+      }, "\u23F1 " + parseInt(r.time)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          background: (CUISINE_COLOR[r.cuisine] || C.textSec) + '28',
+          color: CUISINE_COLOR[r.cuisine] || C.textSec,
+          borderRadius: 4,
+          padding: '2px 6px',
+          fontSize: 10,
+          fontWeight: 600,
+          flexShrink: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }
+      }, r.cuisine))));
+    }))), /*#__PURE__*/React.createElement(ScreenFooter, {
+      center: true
+    }, /*#__PURE__*/React.createElement(BrandTagline, null)));
+  };
+
+  // SavedFilterSheet — 2-column filter bottom sheet (cuisine + cook time)
+  const SavedFilterSheet = () => {
+    if (!showSavedFilters) return null;
+    const cuisineOptions = [...new Set(ALL_RECIPES.map(r => r.cuisine))];
+    const toggleCuisine = c => setPendingCuisines(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
+    const apply = () => {
+      setSavedCuisines(pendingCuisines);
+      setSavedTime(pendingTime);
+      setShowSavedFilters(false);
+    };
+    const clear = () => {
+      setSavedCuisines([]);
+      setSavedTime('any');
+      setPendingCuisines([]);
+      setPendingTime('any');
+      setShowSavedFilters(false);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 100
+      },
+      'data-closing': closingSheet === 'savedfilters' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.savedfilters ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('savedfilters', () => setShowSavedFilters(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.savedfilters ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('savedfilters', () => setShowSavedFilters(false)), swipeDismissFn: () => setShowSavedFilters(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Filter recipes"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        marginBottom: 14
+      }
+    }, "Narrow your saved recipes by cuisine or cook time")), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 20px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: C.textSec,
+        marginBottom: 10
+      }
+    }, "Cuisine"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, cuisineOptions.map(c => {
+      const on = pendingCuisines.includes(c);
+      const cc = CUISINE_COLOR[c] || C.textSec;
+      return /*#__PURE__*/React.createElement("div", {
+        key: c,
+        onClick: () => toggleCuisine(c),
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 9,
+          cursor: 'pointer'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: "2px solid ".concat(on ? cc : C.border),
+          background: on ? cc + '22' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          transition: 'all 0.15s'
+        }
+      }, on && /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 8,
+          height: 8,
+          borderRadius: 2,
+          background: cc
+        }
+      })), /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.meta,
+          color: on ? C.text : C.textSec
+        }
+      }, c));
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 1,
+        background: C.border,
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: C.textSec,
+        marginBottom: 10
+      }
+    }, "Cook time"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, [['any', 'Any time'], ['20', '≤ 20 min'], ['45', '≤ 45 min']].map(([v, l]) => {
+      const on = pendingTime === v;
+      return /*#__PURE__*/React.createElement("div", {
+        key: v,
+        onClick: () => setPendingTime(v),
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 9,
+          cursor: 'pointer'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          border: "2px solid ".concat(on ? C.accent : C.border),
+          background: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          transition: 'all 0.15s'
+        }
+      }, on && /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: C.accent
+        }
+      })), /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.meta,
+          color: on ? C.text : C.textSec
+        }
+      }, l));
+    }))))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: "Apply filters",
+      onPress: apply
+    }))));
+  };
+
+  // 14. Profile
+  const ProfileScreen = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, {
+    left: /*#__PURE__*/React.createElement("button", {
+      onClick: () => goBack(),
+      style: {
+        background: 'none',
+        border: 'none',
+        fontSize: 22,
+        cursor: 'pointer',
+        color: C.textSec,
+        padding: '0 2px',
+        lineHeight: 1
+      }
+    }, "\u2039")
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px ".concat(S.frame, "px 0"),
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 52,
+      height: 52,
+      borderRadius: '50%',
+      background: C.accentMuted,
+      border: "2px solid ".concat(C.accent),
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      fontWeight: 800,
+      color: C.accent,
+      letterSpacing: -0.5
+    }
+  }, "MR"), isPremium && /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: 'absolute',
+      top: -9,
+      right: -5,
+      fontSize: 15,
+      lineHeight: 1
+    }
+  }, "\uD83D\uDC51")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text
+    }
+  }, "Mike Ryan"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      marginTop: 2
+    }
+  }, "mike@allsorted.ie")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: 'transparent',
+      color: isPremium ? C.accent : C.textSec,
+      border: "1px solid ".concat(isPremium ? C.accent : C.border),
+      borderRadius: 20,
+      padding: '4px 10px',
+      ...T.hint,
+      fontWeight: 600,
+      flexShrink: 0
+    }
+  }, isPremium ? '⭐ Premium' : 'Free')), isPremium ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      border: "1px solid ".concat(C.border),
+      borderRadius: 12,
+      padding: '13px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text
+    }
+  }, "Premium"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textSec,
+      marginTop: 3
+    }
+  }, "\u20AC12.99/mo \xB7 renews 25 May")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setIsPremium(false),
+    style: {
+      background: C.accent,
+      color: C.white,
+      border: 'none',
+      borderRadius: 20,
+      padding: '6px 14px',
+      ...T.hint,
+      fontWeight: 700,
+      cursor: 'pointer'
+    }
+  }, "Manage")) : /*#__PURE__*/React.createElement("div", {
+    onClick: () => go('paywall'),
+    style: {
+      background: C.bgSec,
+      border: "1px solid ".concat(C.border),
+      borderRadius: 12,
+      padding: '13px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text
+    }
+  }, "Free plan"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textSec,
+      marginTop: 3
+    }
+  }, "1 free lifetime cart fill \xB7 1 regen per week")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: C.accent,
+      color: C.white,
+      borderRadius: 20,
+      padding: '6px 14px',
+      ...T.hint,
+      fontWeight: 700
+    }
+  }, "Upgrade")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, "Notifications"), /*#__PURE__*/React.createElement(Toggle, {
+    on: notifs,
+    onToggle: () => setNotifs(p => !p)
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "History"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => go('pastweeks'),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, "Past Weeks"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, [['Dietary type', 'pref1'], ['Food intolerances', 'pref2']].map(([l, to], i, a) => /*#__PURE__*/React.createElement("div", {
+    key: l,
+    onClick: () => goEdit(to),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px',
+      borderBottom: i < a.length - 1 ? "1px solid ".concat(C.border) : 'none',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, l), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A"))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Support"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => showToast('Support: hello@allsorted.ie'),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, "Help & Support"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Legal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => go('legal'),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 16px',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, "Privacy & Legal"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A"))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+    label: "Log out",
+    danger: true,
+    onPress: () => setShowLogoutDialog(true)
+  })), showLogoutDialog && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 200,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0,0,0,0.5)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 270,
+      background: C.bgSec,
+      borderRadius: 14,
+      overflow: 'hidden',
+      border: "1px solid ".concat(C.border)
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '18px 16px 14px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text,
+      marginBottom: 6
+    }
+  }, "Sign out?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      lineHeight: 1.5
+    }
+  }, "You'll need to log back in to access your plan.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid ".concat(C.border),
+      display: 'flex'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => setShowLogoutDialog(false),
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.text,
+      cursor: 'pointer',
+      borderRight: "1px solid ".concat(C.border)
+    }
+  }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      setShowLogoutDialog(false);
+      go('splash');
+    },
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.error,
+      cursor: 'pointer'
+    }
+  }, "Sign out")))));
+
+  // 15. Legal sub-screen
+  const LegalScreen = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, {
+    left: /*#__PURE__*/React.createElement("button", {
+      onClick: goBack,
+      style: {
+        background: 'none',
+        border: 'none',
+        fontSize: 22,
+        cursor: 'pointer',
+        color: C.textSec,
+        padding: '0 2px',
+        lineHeight: 1
+      }
+    }, "\u2039")
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: 'auto',
+      padding: "14px ".concat(S.frame, "px 32px"),
+      scrollbarWidth: 'none'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 12
+    }
+  }, [['Privacy Policy', C.text, () => showToast('Opening Privacy Policy…')], ['Terms of Service', C.text, () => showToast('Opening Terms of Service…')], ['Cookie Policy', C.text, () => showToast('Opening Cookie Policy…')], ['Export my data', C.text, () => showToast('Your data export will be emailed to you.')]].map(([l, col, fn], i, a) => /*#__PURE__*/React.createElement("div", {
+    key: l,
+    onClick: fn,
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '13px 16px',
+      borderBottom: i < a.length - 1 ? "1px solid ".concat(C.border) : 'none',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: col
+    }
+  }, l), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A")))), /*#__PURE__*/React.createElement(SectionLabel, null, "Danger zone"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => setShowDeleteDialog(true),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '13px 16px',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.error
+    }
+  }, "Delete my account"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textHint,
+      lineHeight: 1.6,
+      marginTop: 10,
+      padding: '0 4px'
+    }
+  }, "Deleting your account permanently removes all your data from our servers. This cannot be undone. Under GDPR Art. 17 you have the right to erasure.")), /*#__PURE__*/React.createElement(ScreenFooter, {
+    center: true
+  }, /*#__PURE__*/React.createElement(BrandTagline, null)), showDeleteDialog && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 200,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0,0,0,0.5)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 270,
+      background: C.bgSec,
+      borderRadius: 14,
+      overflow: 'hidden',
+      border: "1px solid ".concat(C.border)
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '18px 16px 14px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text,
+      marginBottom: 6
+    }
+  }, "Delete account?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      lineHeight: 1.5
+    }
+  }, "All your data will be permanently removed. This cannot be undone.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid ".concat(C.border),
+      display: 'flex'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => setShowDeleteDialog(false),
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.text,
+      cursor: 'pointer',
+      borderRight: "1px solid ".concat(C.border)
+    }
+  }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      setShowDeleteDialog(false);
+      showToast('Account deletion requested.');
+    },
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.error,
+      cursor: 'pointer'
+    }
+  }, "Delete")))));
+
+  // 16. Paywall
+  const Paywall = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, {
+    left: /*#__PURE__*/React.createElement("button", {
+      onClick: goBack,
+      style: {
+        background: 'none',
+        border: 'none',
+        fontSize: 26,
+        cursor: 'pointer',
+        color: C.textSec,
+        padding: '0 2px',
+        lineHeight: 1,
+        marginLeft: -4
+      }
+    }, "\u2039")
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: 'auto',
+      scrollbarWidth: 'none'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: "20px ".concat(S.frame, "px 20px"),
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 44,
+      marginBottom: 14
+    }
+  }, "\u2B50"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.heading,
+      color: C.text,
+      marginBottom: 8
+    }
+  }, "AllSorted Premium"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.body,
+      color: C.textSec,
+      lineHeight: 1.6
+    }
+  }, "Everything you need for a sorted week, every week.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 ".concat(S.frame, "px"),
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      marginBottom: 24
+    }
+  }, [{
+    emoji: '🛒',
+    t: '4 cart fills per month',
+    s: 'vs 1 lifetime fill on free'
+  }, {
+    emoji: '🔄',
+    t: '3 regens per week',
+    s: 'Swap your whole week any time.\nIncludes AI insight on every plan.'
+  }, {
+    emoji: '⭐',
+    t: 'Full recipe library',
+    s: 'More dinners to swipe through every week'
+  }].map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.t,
+    style: {
+      display: 'flex',
+      gap: 14,
+      alignItems: 'flex-start',
+      background: C.bgSec,
+      borderRadius: 12,
+      padding: '14px',
+      border: "1px solid ".concat(C.border)
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      flexShrink: 0
+    }
+  }, f.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text
+    }
+  }, f.t), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      marginTop: 3,
+      whiteSpace: 'pre-line'
+    }
+  }, f.s))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      padding: "0 ".concat(S.frame, "px 12px")
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 32,
+      fontWeight: 800,
+      color: C.text
+    }
+  }, "\u20AC12.99"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.textSec
+    }
+  }, " / month"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.hint,
+      color: C.textHint,
+      lineHeight: 1.6,
+      marginTop: 8
+    }
+  }, "Cancel anytime \xB7 EU 14-day refund right if unused \xB7 renews monthly"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 16,
+      marginTop: 8,
+      paddingBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.hint,
+      color: C.textSec,
+      cursor: 'pointer'
+    }
+  }, "Privacy Policy"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.hint,
+      color: C.textSec,
+      cursor: 'pointer'
+    }
+  }, "Terms of Service")))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+    label: "Start Premium",
+    onPress: () => {
+      setIsPremium(true);
+      go('plan');
+    }
+  })));
+
+  // ─── OVERLAYS ─────────────────────────────────────────────────────────────────
+
+  // Recipe Detail Bottom Sheet — stable height (sized to tallest tab), 3 tabs, no scroll
+  const RecipeSheet = () => {
+    if (!showRecipe || !activeRecipe) return null;
+    const meal = activeRecipe.meal;
+    const mealIdx = activeRecipe.mealIdx;
+    const fromSaved = activeRecipe.fromSaved;
+
+    // Cook time badge colour — same logic as plan cards
+    const timeMin = parseInt(meal.time);
+    const tc = timeColor(meal.time);
+
+    // Macro rings — normalize all four to the meal's dominant macro so rings
+    // show proportional balance within this meal, not % of daily intake.
+    // (Daily ref values were misleading: a dinner's carbs always looked near-empty.)
+    const maxMacro = Math.max(meal.protein, meal.carbs, meal.fat, meal.fibre);
+    const macros = [{
+      label: 'Protein',
+      value: meal.protein,
+      color: C.protein,
+      refVal: maxMacro
+    }, {
+      label: 'Carbs',
+      value: meal.carbs,
+      color: C.carbs,
+      refVal: maxMacro
+    }, {
+      label: 'Fat',
+      value: meal.fat,
+      color: C.fat,
+      refVal: maxMacro
+    }, {
+      label: 'Fibre',
+      value: meal.fibre,
+      color: C.fibre,
+      refVal: maxMacro
+    }];
+    const kcal = Math.round(meal.protein * 4 + meal.carbs * 4 + meal.fat * 9);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 100
+      },
+      'data-closing': closingSheet === 'recipe' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.recipe ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('recipe', () => setShowRecipe(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.recipe ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        maxHeight: '95%',
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {
+      closeFn: () => closeWithAnim('recipe', () => setShowRecipe(false)),
+      swipeDismissFn: () => setShowRecipe(false)
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 200,
+        background: C.bgEl,
+        margin: '10px 16px 0',
+        borderRadius: 14,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 52,
+        flexShrink: 0
+      }
+    }, meal.photo ? /*#__PURE__*/React.createElement("img", {
+      src: meal.photo,
+      alt: "",
+      style: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+      },
+      onError: e => {
+        e.target.style.display = 'none';
+      }
+    }) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 52
+      }
+    }, meal.emoji)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '12px 16px 0',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        lineHeight: 1.2,
+        marginBottom: 7
+      }
+    }, meal.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: tc + '28',
+        color: tc,
+        borderRadius: 4,
+        padding: '2px 8px',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.2
+      }
+    }, "\u23F1 ", meal.time), /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: (CUISINE_COLOR[meal.cuisine] || C.textSec) + '28',
+        color: CUISINE_COLOR[meal.cuisine] || C.textSec,
+        borderRadius: 4,
+        padding: '2px 8px',
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: 0.2
+      }
+    }, meal.cuisine))), /*#__PURE__*/React.createElement("button", {
+      onClick: () => toggleSaved(mealIdx),
+      style: {
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: 22,
+        lineHeight: 1,
+        padding: '2px 0',
+        marginTop: 1,
+        flexShrink: 0
+      }
+    }, savedSet.has(mealIdx) ? '❤️' : '🤍')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        padding: '12px 16px 0',
+        gap: 4,
+        flexShrink: 0
+      }
+    }, ['ingredients', 'method', 'macros'].map(tab => /*#__PURE__*/React.createElement("button", {
+      key: tab,
+      onClick: () => setRecipeTab(tab),
+      style: {
+        flex: 1,
+        padding: '9px 0',
+        background: recipeTab === tab ? C.accent : C.bgEl,
+        border: 'none',
+        borderRadius: 8,
+        ...T.meta,
+        fontWeight: recipeTab === tab ? 700 : 400,
+        color: recipeTab === tab ? C.white : C.textSec,
+        cursor: 'pointer',
+        textTransform: 'capitalize'
+      }
+    }, tab))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 12
+      }
+    }, /*#__PURE__*/React.createElement(Divider, null)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        padding: '0 16px',
+        overflowY: 'auto'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        gridArea: '1/1',
+        opacity: recipeTab === 'ingredients' ? 1 : 0,
+        pointerEvents: recipeTab === 'ingredients' ? 'auto' : 'none',
+        transition: 'opacity 0.15s ease'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: C.textSec,
+        padding: '10px 0 6px'
+      }
+    }, "Ingredients \xB7 1 serving"), (meal.ingredients || INGREDIENTS).map((ing, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '8px 0',
+        borderBottom: i < INGREDIENTS.length - 1 ? "1px solid ".concat(C.border) : 'none'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.text
+      }
+    }, ing.n), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        marginLeft: 12,
+        flexShrink: 0
+      }
+    }, ing.q))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 16
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        gridArea: '1/1',
+        opacity: recipeTab === 'method' ? 1 : 0,
+        pointerEvents: recipeTab === 'method' ? 'auto' : 'none',
+        transition: 'opacity 0.15s ease'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: C.textSec,
+        padding: '10px 0 6px'
+      }
+    }, "Method"), (meal.steps || STEPS).map((step, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        gap: 11,
+        marginBottom: 13
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        background: C.accentMuted,
+        color: C.accentSoft,
+        ...T.hint,
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        marginTop: 2
+      }
+    }, i + 1), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.text,
+        lineHeight: 1.55
+      }
+    }, step))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 16
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        gridArea: '1/1',
+        opacity: recipeTab === 'macros' ? 1 : 0,
+        pointerEvents: recipeTab === 'macros' ? 'auto' : 'none',
+        transition: 'opacity 0.15s ease'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: C.textSec,
+        padding: '10px 0 10px'
+      }
+    }, "Nutrition \xB7 1 serving"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 8,
+        marginBottom: 10
+      }
+    }, macros.map(m => /*#__PURE__*/React.createElement("div", {
+      key: m.label,
+      style: {
+        background: C.bgEl,
+        borderRadius: 10,
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '12px 12px 8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: C.text,
+        lineHeight: 1
+      }
+    }, m.value, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 400,
+        color: C.textSec,
+        marginLeft: 2
+      }
+    }, "g")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.label,
+        color: m.color,
+        marginTop: 5
+      }
+    }, m.label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 600,
+        color: C.textHint,
+        lineHeight: 1
+      }
+    }, Math.round(m.value / maxMacro * 100), "%")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 3,
+        background: C.bgSec,
+        margin: '0 12px 10px',
+        borderRadius: 2,
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: '100%',
+        width: "".concat(Math.round(m.value / maxMacro * 100), "%"),
+        background: m.color,
+        borderRadius: 2,
+        transition: 'width 0.3s'
+      }
+    }))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgEl,
+        borderRadius: 10,
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.bodyMed,
+        color: C.text
+      }
+    }, "Calories"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.hint,
+        color: C.textSec,
+        marginTop: 2
+      }
+    }, "Calculated from macros")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.heading,
+        color: C.accent
+      }
+    }, kcal, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        fontWeight: 400,
+        marginLeft: 4
+      }
+    }, "kcal"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 16
+      }
+    })))));
+  };
+
+  // Store Connect Sheet
+  const StoreSheet = () => {
+    if (!showStore) return null;
+    const commitAndClose = () => {
+      if (storePick) {
+        setStore(storePick);
+      }
+      closeWithAnim('store', () => setShowStore(false));
+    };
+    const discardAndClose = () => closeWithAnim('store', () => { setStorePick(pendingStore); setShowStore(false); });
+    // Per-store price estimates — apply multiplier to the current included-items total
+    const STORE_MULT = {
+      Tesco: 1.00,
+      Dunnes: 0.96,
+      SuperValu: 1.04
+    };
+    const storeEsts = Object.fromEntries(STORES.map(s => [s.id, totalEstimate * (STORE_MULT[s.id] || 1)]));
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 100
+      },
+      'data-closing': closingSheet === 'store' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.store ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: discardAndClose
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.store ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: discardAndClose, swipeDismissFn: () => { setStorePick(pendingStore); setShowStore(false); }}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Choose your store"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        marginBottom: 14
+      }
+    }, "Linked once \u2014 remembered automatically")), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 6px'
+      }
+    }, STORES.map(s => /*#__PURE__*/React.createElement("div", {
+      key: s.id,
+      onClick: () => setStorePick(s.id),
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '14px 16px',
+        borderRadius: 12,
+        marginBottom: 8,
+        background: storePick === s.id ? C.accentMuted : C.bgEl,
+        border: "1.5px solid ".concat(storePick === s.id ? C.accent : C.border),
+        cursor: 'pointer',
+        transition: 'all 0.2s'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 26
+      }
+    }, s.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.text
+      }
+    }, s.label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        marginTop: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: C.textSec
+      }
+    }, s.sub), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: storePick === s.id ? C.accent : C.textSec,
+        fontWeight: storePick === s.id ? 700 : 400,
+        flexShrink: 0
+      }
+    }, "~\u20AC", storeEsts[s.id].toFixed(2))))))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: storePick ? "Shop at ".concat(storePick) : 'Choose a store',
+      active: !!storePick,
+      onPress: commitAndClose
+    }))));
+  };
+
+  // Portions Sheet — per-person S/M/L picker, regen-modal style
+  const PortionsSheet = () => {
+    if (!showPortions) return null;
+    const cycleSeat = i => setPendingSeatSizes(prev => {
+      const next = [...prev];
+      next[i] = next[i] === 'M' ? 'L' : next[i] === 'L' ? 'S' : 'M';
+      return next;
+    });
+    const commitAndClose = () => {
+      setSeatSizes([...pendingSeatSizes]);
+      setShowPortions(false);
+    };
+    const discardAndClose = () => closeWithAnim('portions', () => setShowPortions(false));
+    const szBg = {
+      S: C.carbs + '2a',
+      M: C.accentMuted,
+      L: C.warning + '2a'
+    };
+    const szBorder = {
+      S: C.carbs + '77',
+      M: C.accent + '77',
+      L: C.warning + '77'
+    };
+    const szText = {
+      S: C.carbs,
+      M: C.accent,
+      L: C.warning
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 110
+      },
+      'data-closing': closingSheet === 'portions' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.portions ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: discardAndClose
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.portions ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: discardAndClose, swipeDismissFn: () => setShowPortions(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Portion sizes"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        alignSelf: 'flex-start',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec
+      }
+    }, "Tap a person to cycle their portion size"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between'
+      }
+    }, [{
+      sz: 'S',
+      label: 'Small',
+      color: C.carbs
+    }, {
+      sz: 'M',
+      label: 'Medium',
+      color: C.accent
+    }, {
+      sz: 'L',
+      label: 'Large',
+      color: C.warning
+    }].map(({
+      sz,
+      label,
+      color
+    }) => /*#__PURE__*/React.createElement("span", {
+      key: sz,
+      style: {
+        ...T.hint,
+        color,
+        fontWeight: 700
+      }
+    }, sz, " \xB7 ", label))))), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 8,
+        marginBottom: 16
+      }
+    }, pendingSeatSizes.map((sz, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      onClick: () => cycleSeat(i),
+      style: {
+        borderRadius: 10,
+        background: szBg[sz],
+        border: "1.5px solid ".concat(szBorder[sz]),
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '10px 0',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20,
+        lineHeight: 1
+      }
+    }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: szText[sz],
+        lineHeight: 1
+      }
+    }, sz))))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: "Done",
+      onPress: commitAndClose
+    }))));
+  };
+
+  // Regen Modal — within-week regeneration (3x max). New week generation is a separate app-entry dialog.
+  const NewWeekModal = () => {
+    if (!showNewWeek) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 100
+      },
+      'data-closing': closingSheet === 'newweek' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.newweek ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('newweek', () => setShowNewWeek(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.newweek ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('newweek', () => setShowNewWeek(false)), swipeDismissFn: () => setShowNewWeek(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Regenerate week"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 5
+      }
+    }, Array.from({
+      length: maxRegens
+    }).map((_, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        width: 9,
+        height: 9,
+        borderRadius: '50%',
+        background: i < regenLeft ? C.accent : C.bgEl,
+        border: "1.5px solid ".concat(i < regenLeft ? C.accent : C.border),
+        transition: 'background 0.2s'
+      }
+    }))), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: regenLeft > 0 ? C.textSec : C.error
+      }
+    }, regenLeft > 0 ? "".concat(regenLeft, " of ").concat(maxRegens, " left this week") : 'No regenerations left this week'))), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '16px 20px 20px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        lineHeight: 1.65,
+        marginBottom: 6
+      }
+    }, "Not feeling this week's plan?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textHint,
+        lineHeight: 1.65
+      }
+    }, "We'll pick 7 fresh meals around your diet type and food intolerances.")), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+      label: regenLeft > 0 ? 'Regenerate my week' : 'No regenerations left',
+      active: regenLeft > 0,
+      onPress: () => regenLeft > 0 ? setShowRegenConfirm(true) : showToast('No regenerations left this week.')
+    }))));
+  };
+
+  // AI Insight Sheet — current week (✨ on plan) or past week (✨ on history detail)
+  const InsightSheet = () => {
+    const isOpen = showInsightSheet || !!historyInsightWeek;
+    if (!isOpen) return null;
+    const closeAll = () => closeWithAnim('insight', () => { setShowInsightSheet(false); setHistoryInsightWeek(null); });
+
+    // Source meals: history week if open from history, otherwise current frozen plan
+    const sourceMeals = historyInsightWeek ? historyInsightWeek.meals : mealOrder.map((_, i) => ({
+      ...getMealAtDay(i),
+      active: dayOn[i]
+    })).filter(m => m.active);
+    const mealCount = sourceMeals.length;
+    const cuisines = [...new Set(sourceMeals.map(m => m.cuisine).filter(Boolean))];
+    const avgProtein = mealCount ? Math.round(sourceMeals.reduce((s, m) => s + (m.protein || 0), 0) / mealCount) : 0;
+    const avgTime = mealCount ? Math.round(sourceMeals.reduce((s, m) => s + parseInt(m.time || '0'), 0) / mealCount) : 0;
+    const quickMeals = sourceMeals.filter(m => parseInt(m.time || '0') <= 25).map(m => m.name.split(' ')[0]);
+    const bigMeal = sourceMeals.length ? sourceMeals.reduce((a, b) => parseInt(a.time || '0') > parseInt(b.time || '0') ? a : b) : null;
+    const hasStew = sourceMeals.some(m => m.name.includes('Stew') || m.name.includes('Pie'));
+    const chips = [avgProtein > 0 && "\uD83E\uDD69 ~".concat(avgProtein, "g protein"), cuisines.length > 0 && "\uD83C\uDF0D ".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), avgTime > 0 && "\u23F1 ~".concat(avgTime, " min")].filter(Boolean);
+
+    // Tips: from past week data if history mode, otherwise derived from current meals
+    const tips = historyInsightWeek?.tips || [bigMeal && parseInt(bigMeal.time || '0') >= 55 ? {
+      icon: '🍖',
+      text: "".concat(bigMeal.name, " takes ").concat(bigMeal.time, " \u2014 worth starting early. Clear your Sunday afternoon.")
+    } : {
+      icon: '⚡',
+      text: "All ".concat(mealCount, " meals are under 35 mins this week. Good for busy evenings.")
+    }, quickMeals.length >= 2 ? {
+      icon: '⚡',
+      text: "Quick wins: ".concat(quickMeals.slice(0, 3).join(', '), " \u2014 all under 25 mins. Save them for late nights.")
+    } : {
+      icon: '🍳',
+      text: 'Steady week — no meal goes beyond 45 mins if you prep the veg in advance.'
+    }, hasStew ? {
+      icon: '🥘',
+      text: 'Stews and pies improve overnight. Make the full portion and refrigerate half for next day.'
+    } : {
+      icon: '🛒',
+      text: 'Ingredients overlap well — a single mid-week shop should cover everything.'
+    }].filter(Boolean);
+    const subtitle = historyInsightWeek ? pastWeekRange(historyInsightWeek.delivery) : "".concat(mealCount, " meals this week");
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 160
+      },
+      'data-closing': closingSheet === 'insight' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.insight ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: closeAll
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.insight ? 'sheet-done' : 'sheet-slide',
+      onAnimationEnd: () => setSheetAnimDone(p => ({ ...p, insight: true })),
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: closeAll, swipeDismissFn: () => { setShowInsightSheet(false); setHistoryInsightWeek(null); }}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Week insight"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.meta,
+        color: C.textSec
+      }
+    }, subtitle))), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 0',
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, chips.map(c => /*#__PURE__*/React.createElement("span", {
+      key: c,
+      style: {
+        background: C.accentMuted,
+        color: C.accentSoft,
+        borderRadius: 20,
+        padding: '4px 12px',
+        fontSize: 12,
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
+      }
+    }, c))), isPremium ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 28px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        lineHeight: 1.65,
+        fontStyle: 'italic'
+      }
+    }, "\"", cuisines.length >= 3 ? 'A varied week' : 'An Irish-leaning week', " \u2014 ", cuisines.filter((_, i) => i < 3).join(', '), ". ~", avgProtein, "g protein \u00b7 ~", avgTime, " mins to cook.\""), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12
+      }
+    }, tips.map((t, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        gap: 12,
+        alignItems: 'flex-start'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        flexShrink: 0,
+        marginTop: 1
+      }
+    }, t.icon), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        lineHeight: 1.6
+      }
+    }, t.text))))) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 28px',
+        position: 'relative'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        filter: 'blur(4px)',
+        userSelect: 'none'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 14,
+        borderRadius: 4,
+        background: C.bgEl,
+        width: '85%'
+      }
+    }), [1, 2, 3].map(k => /*#__PURE__*/React.createElement("div", {
+      key: k,
+      style: {
+        display: 'flex',
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 24,
+        height: 24,
+        borderRadius: 4,
+        background: C.bgEl,
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 12,
+        borderRadius: 4,
+        background: C.bgEl,
+        width: '100%'
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 12,
+        borderRadius: 4,
+        background: C.bgEl,
+        width: '70%'
+      }
+    }))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        closeAll();
+        go('paywall');
+      },
+      style: {
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        background: 'rgba(76,175,80,0.12)',
+        border: "1px solid rgba(76,175,80,0.45)",
+        borderRadius: 999,
+        padding: '9px 22px',
+        fontSize: 13,
+        fontWeight: 700,
+        color: C.accent,
+        cursor: 'pointer',
+        letterSpacing: 0.2
+      }
+    }, "\uD83D\uDD12 Unlock Premium")))));
+  };
+
+  // Day Picker Sheet — three modes: 'delivery' (set anchor), 'copy' (Plan), 'use' (Saved)
+  const DayPickerSheet = () => {
+    if (!showDayPicker) return null;
+    const isUse = dpMode === 'use';
+    const isDelivery = dpMode === 'delivery';
+
+    // Delivery mode rows — 8 days starting today
+    const deliveryRows = isDelivery ? Array.from({
+      length: 8
+    }, (_, k) => {
+      const d = new Date();
+      d.setDate(d.getDate() + k);
+      return d;
+    }) : null;
+    const pickDay = i => {
+      if (isDelivery) {
+        const d = deliveryRows[i];
+        setDeliveryDay(new Date(d));
+        setShowDayPicker(false);
+        showToast("Delivery: ".concat(DAY_SHORT[d.getDay()], " ").concat(d.getDate()));
+        return;
+      }
+      if (isUse) {
+        if (activeRecipe && activeRecipe.meal) {
+          setActivePlan(prev => {
+            const next = [...prev];
+            next[mealOrder[i]] = activeRecipe.meal;
+            return next;
+          });
+        }
+        if (!dayOn[i]) setDayOn(p => {
+          const n = [...p];
+          n[i] = true;
+          return n;
+        });
+        setShowDayPicker(false);
+        showToast("Added to ".concat(cardLabel(i)));
+      } else {
+        if (copySource !== null && copySource !== i) {
+          setOrder(p => {
+            const n = [...p];
+            n[i] = p[copySource];
+            return n;
+          });
+          setSwapPos(p => {
+            const n = [...p];
+            n[i] = swapPos[copySource];
+            return n;
+          });
+          showToast("Copied to ".concat(cardLabel(i)));
+        }
+        setShowDayPicker(false);
+      }
+    };
+    const title = isDelivery ? "When's your delivery?" : isUse ? 'Add to your week' : 'Copy to which day?';
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 110
+      },
+      'data-closing': closingSheet === 'daypicker' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.daypicker ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('daypicker', () => setShowDayPicker(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.daypicker ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('daypicker', () => setShowDayPicker(false)), swipeDismissFn: () => setShowDayPicker(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        textAlign: 'center',
+        padding: '2px 20px 14px',
+        flexShrink: 0
+      }
+    }, title), /*#__PURE__*/React.createElement(Divider, null), isDelivery ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowY: 'auto',
+        scrollbarWidth: 'none'
+      }
+    }, deliveryRows.map((d, i) => {
+      const isSelected = d.toDateString() === deliveryDay.toDateString();
+      const dayName = DAY_SHORT[d.getDay()];
+      const dateNum = d.getDate();
+      const rightLabel = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : MONTH_SHORT[d.getMonth()];
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        onClick: () => pickDay(i),
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '14px 20px',
+          borderBottom: "1px solid ".concat(C.border),
+          cursor: 'pointer',
+          gap: 10,
+          background: isSelected ? C.accentMuted : 'transparent',
+          transition: 'background 0.15s'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 6
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          fontWeight: 700,
+          color: isSelected ? C.accent : C.text
+        }
+      }, dayName), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          color: isSelected ? C.accentSoft : C.textSec
+        }
+      }, dateNum)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          color: isSelected ? C.accent : C.textHint,
+          flexShrink: 0,
+          letterSpacing: 0.3
+        }
+      }, rightLabel), isSelected && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.accent,
+          fontSize: 15,
+          fontWeight: 700,
+          flexShrink: 0,
+          marginLeft: 2
+        }
+      }, "\u2713"));
+    })) :
+    /*#__PURE__*/
+    /* Copy / Use mode — plan day rows */
+    React.createElement("div", {
+      style: {
+        flex: 1,
+        overflowY: 'auto',
+        scrollbarWidth: 'none'
+      }
+    }, mealOrder.map((_, i) => {
+      const isOff = !dayOn[i];
+      const meal = getMealAtDay(i);
+      const shownName = meal.name;
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        onClick: () => pickDay(i),
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '13px 20px',
+          borderBottom: "1px solid ".concat(C.border),
+          cursor: 'pointer',
+          gap: 10
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 13,
+          fontWeight: 700,
+          color: isOff ? C.textHint : C.accent,
+          width: 58,
+          flexShrink: 0,
+          letterSpacing: 0.5,
+          whiteSpace: 'nowrap'
+        }
+      }, cardLabel(i)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.meta,
+          color: isOff ? C.textHint : C.textSec,
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontStyle: isOff ? 'italic' : 'normal'
+        }
+      }, isOff ? 'Day off' : shownName), isOff && isUse && /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.hint,
+          color: C.accent,
+          flexShrink: 0
+        }
+      }, "+ enable"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.textHint,
+          fontSize: 18,
+          flexShrink: 0,
+          lineHeight: 1
+        }
+      }, "\u203A"));
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: S.ftPadB + S.ftPadT
+      }
+    })));
+  };
+
+  // Substitutions Review Sheet
+  const SubsSheet = () => {
+    if (!showSubs) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 120
+      },
+      'data-closing': closingSheet === 'subs' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.subs ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('subs', () => setShowSubs(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.subs ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: 500
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('subs', () => setShowSubs(false)), swipeDismissFn: () => setShowSubs(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Substitutions"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        marginBottom: 14
+      }
+    }, "Items swapped by ", store || 'your store', " \u2014 similar quality.")), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minHeight: 0,
+        overflowY: 'auto',
+        scrollbarWidth: 'none',
+        padding: '14px 20px 14px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgEl,
+        borderRadius: 12,
+        padding: '0 16px',
+        overflow: 'hidden'
+      }
+    }, [{
+      from: 'Cod fillet',
+      to: 'Haddock fillet'
+    }, {
+      from: 'Baby potatoes',
+      to: 'New potatoes'
+    }, {
+      from: 'Double cream',
+      to: 'Whipping cream'
+    }, {
+      from: 'Cherry tomatoes',
+      to: 'Vine tomatoes'
+    }, {
+      from: 'Unsalted butter',
+      to: 'Salted butter'
+    }, {
+      from: 'Free-range eggs',
+      to: 'Barn eggs'
+    }, {
+      from: 'Sourdough loaf',
+      to: 'White bloomer'
+    }, {
+      from: 'Whole milk',
+      to: 'Semi-skimmed milk'
+    }, {
+      from: 'Streaky bacon',
+      to: 'Back bacon'
+    }].map((s, i, a) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '13px 0',
+        borderBottom: i < a.length - 1 ? "1px solid ".concat(C.border) : 'none'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.textSec,
+        flex: 1,
+        minWidth: 0
+      }
+    }, s.from), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.textHint,
+        fontSize: 14,
+        flexShrink: 0
+      }
+    }, "\u2192"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.body,
+        color: C.text,
+        flex: 1,
+        minWidth: 0,
+        textAlign: 'right'
+      }
+    }, s.to))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: S.ftPadB + S.ftPadT
+      }
+    })));
+  };
+
+  // Missing Items Sheet
+  const MissingSheet = () => {
+    if (!showMissing) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 120
+      },
+      'data-closing': closingSheet === 'missing' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.missing ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('missing', () => setShowMissing(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.missing ? 'sheet-done' : 'sheet-slide',
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0',
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('missing', () => setShowMissing(false)), swipeDismissFn: () => setShowMissing(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '4px 20px 0'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.title,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, "Unavailable items"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.meta,
+        color: C.textSec,
+        marginBottom: 14
+      }
+    }, "Out of stock at your store \u2014 not added to cart.")), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '14px 20px 0'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: C.bgEl,
+        borderRadius: 12,
+        padding: '0 16px',
+        overflow: 'hidden'
+      }
+    }, ['Lamb shoulder 500g', 'Fresh dill 30g', 'Crème fraîche 200ml'].map((item, i, a) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        padding: '13px 0',
+        borderBottom: i < a.length - 1 ? "1px solid ".concat(C.border) : 'none'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...T.body,
+        color: C.text
+      }
+    }, item))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: S.ftPadB + S.ftPadT
+      }
+    })));
+  };
+
+  // ─── Share Sheet — single component for WeekComplete + HistoryDetailScreen ───
+  const ShareSheet = () => {
+    if (!showShareSheet) return null;
+    const isHistory = !!historyWeek;
+
+    // Meal rows: { emoji, day (mixed case "Mon 25"), name }
+    const shareMeals = isHistory ? historyWeek.meals.map((m, i) => {
+      const d = new Date(historyWeek.delivery);
+      d.setDate(d.getDate() + i);
+      return {
+        emoji: m.emoji,
+        day: "".concat(DAY_SHORT[d.getDay()], " ").concat(d.getDate()),
+        name: m.name
+      };
+    }) : mealOrder.map((idx, i) => {
+      const m = getMealAtDay(i);
+      return {
+        emoji: m.emoji,
+        day: "".concat(DAY_SHORT[cardDate(i).getDay()], " ").concat(cardDate(i).getDate()),
+        name: m.name
+      };
+    });
+
+    // Header label
+    const label = isHistory ? pastWeekRange(historyWeek.delivery).toUpperCase() : 'WEEK SORTED ✓';
+
+    // Nutrition stats
+    const stats = isHistory ? (() => {
+      const wp = historyWeek.meals.reduce((s, m) => s + (m.protein || 0), 0);
+      return [{
+        val: wp,
+        unit: 'protein',
+        color: C.protein
+      }, {
+        val: Math.round(wp * 0.9),
+        unit: 'carbs',
+        color: C.carbs
+      }, {
+        val: Math.round(wp * 0.4),
+        unit: 'fat',
+        color: C.fat
+      }, {
+        val: Math.round(wp * 18),
+        unit: 'kcal',
+        color: '#F0F0F0'
+      }];
+    })() : (() => {
+      const a = mealOrder.map((_, i) => getMealAtDay(i)).filter((_, i) => dayOn[i]);
+      return [{
+        val: a.reduce((s, m) => s + Math.round(m.protein * 4 + m.carbs * 4 + m.fat * 9), 0),
+        unit: 'kcal',
+        color: '#F0F0F0'
+      }, {
+        val: a.reduce((s, m) => s + m.protein, 0),
+        unit: 'protein',
+        color: C.protein
+      }, {
+        val: a.reduce((s, m) => s + m.carbs, 0),
+        unit: 'carbs',
+        color: C.carbs
+      }, {
+        val: a.reduce((s, m) => s + m.fat, 0),
+        unit: 'fat',
+        color: C.fat
+      }];
+    })();
+
+    // Estimate
+    const est = isHistory ? historyWeek.estimate : totalEstimate;
+    const estLbl = "~\u20AC".concat(est.toFixed(2)).concat(!isHistory && store ? " at ".concat(store) : '');
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        inset: 0,
+        zIndex: 140
+      },
+      'data-closing': closingSheet === 'share' ? 'true' : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.share ? 'backdrop-done' : 'backdrop-anim',
+      style: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)'
+      },
+      onClick: () => closeWithAnim('share', () => setShowShareSheet(false))
+    }), /*#__PURE__*/React.createElement("div", {
+      className: sheetAnimDone.share ? 'sheet-done' : 'sheet-slide',
+      onAnimationEnd: () => setSheetAnimDone(p => ({ ...p, share: true })),
+      style: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.bgSec,
+        borderRadius: '18px 18px 0 0'
+      }
+    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('share', () => setShowShareSheet(false)), swipeDismissFn: () => setShowShareSheet(false)}), /*#__PURE__*/React.createElement("div", {
+      style: {
+        margin: '4px 16px 12px',
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: "1px solid ".concat(C.accent, "44")
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: 'linear-gradient(135deg,#071f07 0%,#0d2e0d 100%)',
+        padding: '14px 16px 12px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        background: C.accent,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 14,
+        color: C.white,
+        fontWeight: 800
+      }
+    }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...T.bodyMed,
+        color: C.white,
+        letterSpacing: 0.3
+      }
+    }, "AllSorted")), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        fontWeight: 600,
+        color: C.accentSoft,
+        letterSpacing: 0.4
+      }
+    }, label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
+      }
+    }, shareMeals.map((m, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        gap: 6,
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.7)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 20,
+        flexShrink: 0
+      }
+    }, m.emoji), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flexShrink: 0,
+        minWidth: 42,
+        whiteSpace: 'nowrap',
+        color: 'rgba(255,255,255,0.4)'
+      }
+    }, m.day), /*#__PURE__*/React.createElement("span", {
+      style: {
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
+      }
+    }, m.name))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: '#0a1a0a',
+        padding: '10px 16px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        borderTop: "1px solid ".concat(C.accent, "22")
+      }
+    }, stats.map(s => /*#__PURE__*/React.createElement("div", {
+      key: s.unit,
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 800,
+        color: s.color,
+        lineHeight: 1
+      }
+    }, s.val), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        fontWeight: 600,
+        color: 'rgba(255,255,255,0.4)',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase'
+      }
+    }, s.unit)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: '#071007',
+        padding: '8px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTop: "1px solid ".concat(C.accent, "22")
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: C.accentSoft,
+        fontWeight: 600
+      }
+    }, estLbl), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: 'rgba(255,255,255,0.3)',
+        letterSpacing: 0.5
+      }
+    }, "PLAN \xB7 SHOP \xB7 DONE"))), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        setShowShareSheet(false);
+        showToast('Link copied!');
+      },
+      style: {
+        textAlign: 'center',
+        padding: '0 0 10px',
+        ...T.hint,
+        color: C.accent,
+        fontWeight: 600,
+        cursor: 'pointer',
+        letterSpacing: 0.2
+      }
+    }, "Copy link"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-around',
+        padding: '0 8px 4px'
+      }
+    }, SHARE_APPS.map(app => /*#__PURE__*/React.createElement("div", {
+      key: app.name,
+      onClick: () => {
+        setShowShareSheet(false);
+        showToast("Shared to ".concat(app.name, "!"));
+      },
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 5,
+        cursor: 'pointer',
+        padding: '4px 6px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 50,
+        height: 50,
+        borderRadius: 14,
+        background: app.bg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 22,
+        border: '1px solid rgba(255,255,255,0.08)'
+      }
+    }, app.icon), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: C.textSec
+      }
+    }, app.name)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: S.ftPadB
+      }
+    })));
+  };
+
+  // ─── Past Weeks list screen ────────────────────────────────────────────────────
+  const PastWeeksScreen = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement(ScreenHeader, {
+    left: /*#__PURE__*/React.createElement("button", {
+      onClick: () => goBack(),
+      style: {
+        background: 'none',
+        border: 'none',
+        fontSize: 22,
+        cursor: 'pointer',
+        color: C.textSec,
+        padding: '0 2px',
+        lineHeight: 1
+      }
+    }, "\u2039")
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: 'auto',
+      padding: "14px ".concat(S.frame, "px 32px"),
+      scrollbarWidth: 'none',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, PAST_WEEKS.map(week => /*#__PURE__*/React.createElement("div", {
+    key: week.id,
+    onClick: () => {
+      setHistoryWeek(week);
+      go('historydetail');
+    },
+    style: {
+      background: C.bgSec,
+      borderRadius: 12,
+      padding: '13px 16px',
+      cursor: 'pointer',
+      border: "1px solid ".concat(C.border),
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...T.body,
+      color: C.text
+    }
+  }, pastWeekRange(week.delivery)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.textHint,
+      fontSize: 18
+    }
+  }, "\u203A")))), /*#__PURE__*/React.createElement(ScreenFooter, {
+    center: true
+  }, /*#__PURE__*/React.createElement(BrandTagline, null)));
+
+  // ─── History detail screen — frozen plan style ──────────────────────────────
+  const HistoryDetailScreen = () => {
+    if (!historyWeek) return null;
+    const hCardDate = i => {
+      const d = new Date(historyWeek.delivery);
+      d.setDate(d.getDate() + i);
+      return d;
+    };
+    const hCardLabel = i => {
+      const d = hCardDate(i);
+      return "".concat(DAY_SHORT[d.getDay()].toUpperCase(), " ").concat(d.getDate());
+    };
+    const crossesMonth = historyWeek.delivery.getMonth() !== hCardDate(6).getMonth();
+    const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[historyWeek.delivery.getMonth()], " \xB7 ").concat(MONTH_SHORT[hCardDate(6).getMonth()]) : MONTH_SHORT[historyWeek.delivery.getMonth()];
+    const badge = (label, color, truncate) => /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: color + '28',
+        color,
+        borderRadius: 4,
+        padding: '2px 6px',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: 0.2,
+        flexShrink: truncate ? 1 : 0,
+        minWidth: truncate ? 0 : undefined,
+        overflow: truncate ? 'hidden' : undefined,
+        textOverflow: truncate ? 'ellipsis' : undefined,
+        whiteSpace: truncate ? 'nowrap' : undefined,
+      }
+    }, label);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement(ScreenHeader, {
+      left: /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => go('pastweeks', { back: true }),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 22,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '0 2px',
+          lineHeight: 1
+        }
+      }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          background: 'transparent',
+          border: "1px solid ".concat(C.border),
+          borderRadius: 20,
+          padding: '2px 8px',
+          fontSize: 11,
+          fontWeight: 600,
+          color: C.textSec,
+          whiteSpace: 'nowrap'
+        }
+      }, monthLabel)),
+      center: /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.logo,
+          color: C.text
+        }
+      }, "AllSorted"),
+      right: /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center'
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => setHistoryInsightWeek(historyWeek),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 18,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '2px 4px',
+          lineHeight: 1
+        }
+      }, "\u2728"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => setShowShareSheet(true),
+        style: {
+          background: 'none',
+          border: 'none',
+          fontSize: 18,
+          cursor: 'pointer',
+          color: C.textSec,
+          padding: '2px 4px',
+          lineHeight: 1
+        }
+      }, "\uD83D\uDCE4"))
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        padding: '6px 12px 6px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        overflowY: 'auto'
+      }
+    }, historyWeek.meals.map((meal, i) => {
+      const cc = CUISINE_COLOR[meal.cuisine] || C.textSec;
+      const tc = meal.time ? timeColor(meal.time) : C.textSec;
+      const fullMeal = ALL_RECIPES.find(m => m.name === meal.name) || {
+        ...meal,
+        serves: 4,
+        allergens: [],
+        incompatible: [],
+        carbs: 30,
+        fat: 12,
+        fibre: 4
+      };
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          background: C.bgSec,
+          borderRadius: 10,
+          border: '1px solid transparent',
+          flex: 1,
+          minHeight: 88,
+          maxHeight: 110,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '8px 10px',
+          gap: 7,
+          flex: 1
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.border,
+          fontSize: 14,
+          flexShrink: 0,
+          lineHeight: 1,
+          opacity: 0.35,
+          cursor: 'default',
+          userSelect: 'none'
+        }
+      }, "\u2261"), /*#__PURE__*/React.createElement("div", {
+        onClick: () => {
+          setActiveRecipe({
+            meal: fullMeal,
+            mealIdx: 0
+          });
+          setRecipeTab('ingredients');
+          setShowRecipe(true);
+        },
+        style: {
+          width: 56,
+          height: 56,
+          alignSelf: 'center',
+          borderRadius: 8,
+          background: C.bgEl,
+          overflow: 'hidden',
+          position: 'relative',
+          cursor: 'pointer',
+          flexShrink: 0
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 24
+        }
+      }, meal.emoji), fullMeal.photo && /*#__PURE__*/React.createElement("img", {
+        src: fullMeal.photo,
+        alt: "",
+        style: {
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        },
+        onError: e => {
+          e.target.style.display = 'none';
+        }
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          cursor: 'pointer'
+        },
+        onClick: () => {
+          setActiveRecipe({
+            meal: fullMeal,
+            mealIdx: 0
+          });
+          setRecipeTab('ingredients');
+          setShowRecipe(true);
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          overflow: 'hidden'
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          fontWeight: 800,
+          color: C.textSec,
+          letterSpacing: 0.8,
+          flexShrink: 0,
+          whiteSpace: 'nowrap'
+        }
+      }, hCardLabel(i)), meal.time && badge('⏱ ' + parseInt(meal.time), tc), meal.cuisine && badge(meal.cuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          ...T.bodyMed,
+          color: C.text,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          lineHeight: 1.2
+        }
+      }, meal.name)), /*#__PURE__*/React.createElement(Toggle, {
+        on: true,
+        disabled: true
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {
+          height: 7
+        }
+      }));
+    })), /*#__PURE__*/React.createElement(ScreenFooter, {
+      center: true
+    }, /*#__PURE__*/React.createElement(BrandTagline, null)));
+  };
+  // ─── Status bar ────────────────────────────────────────────────────────────────
+  const StatusBar = () => /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 44,
+      background: C.bg,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 24px',
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: C.text
+    }
+  }, "9:41"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 110,
+      height: 28,
+      background: '#000',
+      borderRadius: 16,
+      border: '2px solid #222'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center',
+      fontSize: 11,
+      color: C.text
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\u25CF\u25CF\u25CF"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent
+    }
+  }, "\uD83D\uDD0B")));
+
+  // ─── Screen map ────────────────────────────────────────────────────────────────
+  const screens = {
+    splash: /*#__PURE__*/React.createElement(Splash, null),
+    onboarding1: /*#__PURE__*/React.createElement(Onboarding, {
+      slide: 1
+    }),
+    onboarding2: /*#__PURE__*/React.createElement(Onboarding, {
+      slide: 2
+    }),
+    onboarding3: /*#__PURE__*/React.createElement(Onboarding, {
+      slide: 3
+    }),
+    auth: /*#__PURE__*/React.createElement(Auth, null),
+    pref1: /*#__PURE__*/React.createElement(Pref1, null),
+    pref2: /*#__PURE__*/React.createElement(Pref2, null),
+    generating: /*#__PURE__*/React.createElement(Generating, null),
+    plan: PlanScreen(),
+    shop: ShopScreen(),
+    // both called as fns (not components) so DOM nodes + event listeners stay stable across state changes
+    injecting: /*#__PURE__*/React.createElement(Injecting, null),
+    cartready: /*#__PURE__*/React.createElement(CartReady, null),
+    webview: /*#__PURE__*/React.createElement(WebViewScreen, null),
+    weekcomplete: /*#__PURE__*/React.createElement(WeekComplete, null),
+    saved: /*#__PURE__*/React.createElement(SavedScreen, null),
+    profile: /*#__PURE__*/React.createElement(ProfileScreen, null),
+    pastweeks: /*#__PURE__*/React.createElement(PastWeeksScreen, null),
+    historydetail: /*#__PURE__*/React.createElement(HistoryDetailScreen, null),
+    legal: /*#__PURE__*/React.createElement(LegalScreen, null),
+    paywall: /*#__PURE__*/React.createElement(Paywall, null)
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: '100dvh',
+      background: C.bg,
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif'
+    }
+  }, /*#__PURE__*/React.createElement("style", null, "\n        * { box-sizing: border-box; }\n        ::-webkit-scrollbar { display: none; }\n        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }\n        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(7px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }\n        @keyframes toastIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }\n        @keyframes slideUp { from { transform:translateY(14px); opacity:0.5 } to { transform:translateY(0); opacity:1 } }\n        @keyframes slideDown { from { transform:translateY(0); opacity:1 } to { transform:translateY(14px); opacity:0 } }\n        @keyframes fadeOutBg { from { opacity:1 } to { opacity:0 } }\n        [data-closing='true'] .sheet-slide, [data-closing='true'] .sheet-done { animation: slideDown 0.28s cubic-bezier(0.32,0.72,0,1) both; }\n        [data-closing='true'] .backdrop-anim, [data-closing='true'] .backdrop-done { animation: fadeOutBg 0.22s ease both; }\n        .sheet-done { transform: translateY(0); }\n        .backdrop-done { opacity: 1; }\n        @keyframes fadeInBg { from { opacity:0 } to { opacity:1 } }\n        .sheet-slide { animation: slideUp 0.22s ease-out both; }\n        .backdrop-anim { animation: fadeInBg 0.2s ease both; }\n        input { font-family: inherit; }\n        input::placeholder { color: #5E5E5E; }\n      "), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: C.bg,
+      overflow: 'hidden',
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }, /*#__PURE__*/React.createElement(StatusBar, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'hidden'
+    }
+  }, screens[screen] || null, /*#__PURE__*/React.createElement(RecipeSheet, null), /*#__PURE__*/React.createElement(StoreSheet, null), /*#__PURE__*/React.createElement(PortionsSheet, null), /*#__PURE__*/React.createElement(NewWeekModal, null), /*#__PURE__*/React.createElement(InsightSheet, null), /*#__PURE__*/React.createElement(DayPickerSheet, null), /*#__PURE__*/React.createElement(SubsSheet, null), /*#__PURE__*/React.createElement(MissingSheet, null), /*#__PURE__*/React.createElement(ShareSheet, null), /*#__PURE__*/React.createElement(SavedFilterSheet, null), toast && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: 80,
+      left: 0,
+      right: 0,
+      zIndex: 300,
+      display: 'flex',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      animation: 'toastIn 0.2s ease'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'rgba(18,18,18,0.94)',
+      border: "1px solid ".concat(C.border),
+      borderRadius: 999,
+      padding: '8px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.accent,
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 500,
+      color: C.text
+    }
+  }, toast))), showRegenConfirm && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 200,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0,0,0,0.5)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 270,
+      background: C.bgSec,
+      borderRadius: 14,
+      overflow: 'hidden',
+      border: "1px solid ".concat(C.border)
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '18px 16px 14px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.bodyMed,
+      color: C.text,
+      marginBottom: 6
+    }
+  }, "Replace this week?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...T.meta,
+      color: C.textSec,
+      lineHeight: 1.5
+    }
+  }, "All 7 meals will be swapped for a fresh set. This uses one regeneration (", regenLeft, " left).")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid ".concat(C.border),
+      display: 'flex'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => setShowRegenConfirm(false),
+    style: {
+      flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.body,
+      color: C.textSec,
+      cursor: 'pointer',
+      borderRight: "1px solid ".concat(C.border)
+    }
+  }, "Cancel"), /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      setShowRegenConfirm(false);
+      regen();
+    },
+    style: {
+            flex: 1,
+      padding: '13px 8px',
+      textAlign: 'center',
+      ...T.bodyMed,
+      color: C.accent,
+      cursor: 'pointer'
+    }
+  }, "Regenerate")))))));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(AllSortedPrototype, null));
