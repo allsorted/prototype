@@ -562,7 +562,8 @@ const MacroRing = ({
 // left / right: pass any ReactNode. Omit either and a 28px spacer balances it.
 const ScreenHeader = ({
   left,
-  right
+  right,
+  badge
 }) => /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
   style: {
     position: 'relative',
@@ -604,7 +605,9 @@ const ScreenHeader = ({
   style: {
     color: C.accent
   }
-}, "$"), "orted")), /*#__PURE__*/React.createElement("div", {
+}, "$"), "orted")), badge ? /*#__PURE__*/React.createElement("div", {
+  style: { position: 'absolute', left: 44, right: '65%', top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }
+}, badge) : null, /*#__PURE__*/React.createElement("div", {
   style: {
     zIndex: 1,
     minWidth: 28,
@@ -911,6 +914,8 @@ function AllSortedPrototype() {
     return d;
   });
   const [isFrozen, setIsFrozen] = useState(false);
+  const isFrozenRef = useRef(false);
+  useEffect(() => { isFrozenRef.current = isFrozen; }, [isFrozen]);
 
   // Portions (L/M/S model)
   const [cookFor, setCookFor] = useState(2);
@@ -1224,6 +1229,7 @@ function AllSortedPrototype() {
       endDrag();
       if (wasDragging) return; // don't process as swipe
       if (!swipeStartRef.current) return;
+      if (isFrozenRef.current) return; // no swaps in frozen mode
       const { x, y, idx } = swipeStartRef.current;
       swipeStartRef.current = null;
       const dx = e.changedTouches[0].clientX - x;
@@ -1233,13 +1239,8 @@ function AllSortedPrototype() {
         const card = container.querySelector('[data-card-idx="' + idx + '"]');
         if (!card || card.dataset.hasSwaps !== 'true') return;
         const maxS = maxSwaps;
-        if (dx < 0) {
-          if (pos >= maxS) { setShakeIdx(idx); setTimeout(() => setShakeIdx(null), 380); }
-          else swapNext(idx);
-        } else {
-          if (pos <= 0) { setShakeIdx(idx); setTimeout(() => setShakeIdx(null), 380); }
-          else swapPrev(idx);
-        }
+        if (dx < 0) swapNext(idx);
+        else swapPrev(idx);
       }
     };
 
@@ -1348,12 +1349,12 @@ function AllSortedPrototype() {
   // Bounds check is inside the updater so it always reads fresh state (no stale closure issue)
   const swapNext = i => setSwapPos(p => {
     const n = [...p];
-    n[i] = p[i] <= 0 || p[i] >= maxSwaps ? 1 : p[i] + 1;
+    n[i] = p[i] >= maxSwaps ? 0 : p[i] + 1;
     return n;
   });
   const swapPrev = i => setSwapPos(p => {
     const n = [...p];
-    n[i] = p[i] <= 1 ? maxSwaps : p[i] - 1;
+    n[i] = p[i] <= 0 ? maxSwaps : p[i] - 1;
     return n;
   });
   const toggleDisliked = id => setDislikedSet(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -1825,10 +1826,10 @@ function AllSortedPrototype() {
         style: {
           background: 'none',
           border: 'none',
-          fontSize: 22,
+          fontSize: 26,
           cursor: 'pointer',
           color: C.textSec,
-          padding: '0 2px',
+          padding: '0 4px',
           lineHeight: 1
         }
       }, "\u2039") : null
@@ -1915,10 +1916,10 @@ function AllSortedPrototype() {
       style: {
         background: 'none',
         border: 'none',
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         color: C.textSec,
-        padding: '0 2px',
+        padding: '0 4px',
         lineHeight: 1
       }
     }, "\u2039")
@@ -2134,13 +2135,7 @@ function AllSortedPrototype() {
       const crossesMonth = weekStartDay.getMonth() !== cardDate(6).getMonth();
       const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[weekStartDay.getMonth()], " \u2013 ").concat(MONTH_SHORT[cardDate(6).getMonth()]) : MONTH_SHORT[weekStartDay.getMonth()];
       return /*#__PURE__*/React.createElement(ScreenHeader, {
-        left: /*#__PURE__*/React.createElement("div", {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }
-        }, isFrozen ? /*#__PURE__*/React.createElement("button", {
+        left: isFrozen ? /*#__PURE__*/React.createElement("button", {
           onClick: () => setShowInsightSheet(true),
           style: {
             background: 'none',
@@ -2162,14 +2157,15 @@ function AllSortedPrototype() {
             padding: '2px 4px',
             lineHeight: 1
           }
-        }, "\ud83d\udd04"), isFrozen
+        }, "\ud83d\udd04"),
+        badge: isFrozen
           ? /*#__PURE__*/React.createElement("span", {
               style: { background: 'transparent', border: "1px solid ".concat(C.accent), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }
             }, monthLabel)
           : /*#__PURE__*/React.createElement("button", {
               onClick: () => { setDpMode('weekstart'); setShowDayPicker(true); },
               style: { background: 'transparent', border: "1px solid ".concat(C.border), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.textSec, whiteSpace: 'nowrap', cursor: 'pointer' }
-            }, monthLabel)),
+            }, monthLabel),
         right: /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'flex',
@@ -2523,19 +2519,19 @@ function AllSortedPrototype() {
           transition: 'opacity 0.25s'
         }
       }, Array.from({
-        length: maxSwaps
+        length: maxSwaps + 1
       }).map((_, di) => /*#__PURE__*/React.createElement("div", {
         key: di,
         onClick: isOff ? undefined : () => setSwapPos(p => {
           const n = [...p];
-          n[i] = di + 1;
+          n[i] = di;
           return n;
         }),
         style: {
-          width: pos === di + 1 ? 14 : 6,
+          width: pos === di ? 14 : 6,
           height: 5,
           borderRadius: 3,
-          background: pos === di + 1 ? C.accent : C.border,
+          background: pos === di ? C.accent : C.border,
           transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'all 0.2s',
           cursor: isOff ? 'default' : 'pointer'
         }
@@ -2700,24 +2696,19 @@ function AllSortedPrototype() {
         overflow: 'hidden'
       }
     }, /*#__PURE__*/React.createElement(ScreenHeader, {
-      left: /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }
-      }, /*#__PURE__*/React.createElement("button", {
+      left: /*#__PURE__*/React.createElement("button", {
         onClick: () => goBack(),
         style: {
           background: 'none',
           border: 'none',
-          fontSize: 22,
+          fontSize: 26,
           cursor: 'pointer',
           color: C.textSec,
-          padding: '0 2px',
+          padding: '0 4px',
           lineHeight: 1
         }
-      }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+      }, "\u2039"),
+      badge: /*#__PURE__*/React.createElement("span", {
         style: {
           background: 'transparent',
           border: "1px solid ".concat(fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.border),
@@ -2728,7 +2719,7 @@ function AllSortedPrototype() {
           color: fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.textSec,
           whiteSpace: 'nowrap'
         }
-      }, fillUsed, "/", maxFills, " fills")),
+      }, fillUsed, "/", maxFills, " fills"),
       right: store ? /*#__PURE__*/React.createElement("button", {
         onClick: cartFilled || isFrozen ? undefined : () => {
           setPendingStore(store);
@@ -2737,14 +2728,14 @@ function AllSortedPrototype() {
         },
         style: {
           background: 'none',
-          border: "1px solid ".concat(cartFilled || isFrozen ? C.border : C.accent),
+          border: "1px solid ".concat(isFrozen ? C.accent : cartFilled ? C.border : C.accent),
           borderRadius: 20,
           padding: '3px 10px',
           ...T.hint,
           fontWeight: 600,
-          color: cartFilled || isFrozen ? C.textHint : C.accent,
+          color: isFrozen ? C.accent : cartFilled ? C.textHint : C.accent,
           cursor: cartFilled || isFrozen ? 'default' : 'pointer',
-          opacity: cartFilled || isFrozen ? 0.5 : 1
+          opacity: cartFilled && !isFrozen ? 0.5 : 1
         }
       }, store) : null
     }), /*#__PURE__*/React.createElement("div", {
@@ -2759,7 +2750,8 @@ function AllSortedPrototype() {
         padding: '12px 14px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        gap: 0
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -2773,58 +2765,63 @@ function AllSortedPrototype() {
         gap: 8
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: remSeat,
+      onClick: isFrozen ? undefined : remSeat,
       style: {
         width: 28,
         height: 28,
         borderRadius: '50%',
         border: "1px solid ".concat(C.border),
         background: 'none',
-        color: cookFor <= 1 ? C.textHint : C.text,
+        color: C.textHint,
         fontSize: 16,
-        cursor: 'pointer',
+        cursor: isFrozen ? 'default' : 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        lineHeight: 1
+        lineHeight: 1,
+        opacity: isFrozen ? 0.4 : (cookFor <= 1 ? 0.4 : 1)
       }
     }, "\u2212"), /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.bodyMed,
-        color: C.text,
+        color: isFrozen ? C.accent : C.text,
+        fontSize: isFrozen ? 20 : undefined,
+        fontWeight: isFrozen ? 700 : undefined,
         minWidth: 14,
         textAlign: 'center'
       }
     }, cookFor), /*#__PURE__*/React.createElement("button", {
-      onClick: addSeat,
+      onClick: isFrozen ? undefined : addSeat,
       style: {
         width: 28,
         height: 28,
         borderRadius: '50%',
         border: "1px solid ".concat(C.border),
         background: 'none',
-        color: cookFor >= 8 ? C.textHint : C.text,
+        color: C.textHint,
         fontSize: 16,
-        cursor: 'pointer',
+        cursor: isFrozen ? 'default' : 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        lineHeight: 1
+        lineHeight: 1,
+        opacity: isFrozen ? 0.4 : (cookFor >= 8 ? 0.4 : 1)
       }
     }, "+")), /*#__PURE__*/React.createElement("button", {
-      onClick: () => {
+      onClick: isFrozen ? undefined : () => {
         setPendingSeatSizes([...seatSizes]);
         setShowPortions(true);
       },
       style: {
-        background: C.accent,
-        color: C.white,
+        background: isFrozen ? C.bgEl : C.accent,
+        color: isFrozen ? C.textHint : C.white,
         border: 'none',
-        borderRadius: 20,
+        borderRadius: 999,
         padding: '6px 14px',
         ...T.hint,
         fontWeight: 700,
-        cursor: 'pointer'
+        cursor: isFrozen ? 'default' : 'pointer',
+        opacity: isFrozen ? 0.4 : 1
       }
     }, "Portions"))), /*#__PURE__*/React.createElement(Divider, null), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -3093,10 +3090,10 @@ function AllSortedPrototype() {
         background: 'none',
         border: 'none',
         color: C.textSec,
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         lineHeight: 1,
-        padding: '0 2px'
+        padding: '0 4px'
       }
     }, "\u2039");
     return /*#__PURE__*/React.createElement("div", {
@@ -3177,10 +3174,10 @@ function AllSortedPrototype() {
       background: 'none',
       border: 'none',
       color: C.textSec,
-      fontSize: 22,
+      fontSize: 26,
       cursor: 'pointer',
       lineHeight: 1,
-      padding: '0 2px'
+      padding: '0 4px'
     }
   }, "\u2039"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3360,10 +3357,10 @@ function AllSortedPrototype() {
         background: 'none',
         border: 'none',
         color: C.textSec,
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         lineHeight: 1,
-        padding: '0 2px'
+        padding: '0 4px'
       }
     }, "\u2039");
     return /*#__PURE__*/React.createElement("div", {
@@ -3664,10 +3661,10 @@ function AllSortedPrototype() {
         style: {
           background: 'none',
           border: 'none',
-          fontSize: 22,
+          fontSize: 26,
           cursor: 'pointer',
           color: C.textSec,
-          padding: '0 2px',
+          padding: '0 4px',
           lineHeight: 1
         }
       }, "\u2039"),
@@ -3935,7 +3932,7 @@ function AllSortedPrototype() {
       style: {
         padding: '14px 20px 20px'
       }
-    }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex', padding: '8px 20px 16px' } },
+    }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex' } },
     /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
       /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textSec, marginBottom: 10 } }, "Cuisine"),
       /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
@@ -3977,10 +3974,10 @@ function AllSortedPrototype() {
       style: {
         background: 'none',
         border: 'none',
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         color: C.textSec,
-        padding: '0 2px',
+        padding: '0 4px',
         lineHeight: 1
       }
     }, "\u2039")
@@ -4146,8 +4143,8 @@ function AllSortedPrototype() {
   }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Past Weeks"),
   /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")),
   /*#__PURE__*/React.createElement("div", {
-    onClick: () => go('disliked'),
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }
+    onClick: isPremium ? () => go('disliked') : undefined,
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: isPremium ? 'pointer' : 'default', opacity: isPremium ? 1 : 0.4 }
   }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Disliked recipes"),
   /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4314,10 +4311,10 @@ function AllSortedPrototype() {
       style: {
         background: 'none',
         border: 'none',
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         color: C.textSec,
-        padding: '0 2px',
+        padding: '0 4px',
         lineHeight: 1
       }
     }, "\u2039")
@@ -4470,13 +4467,13 @@ function AllSortedPrototype() {
   /*#__PURE__*/React.createElement("div", {
     style: { padding: "0 ".concat(S.frame, "px"), display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }
   }, [{
-    emoji: '\uD83D\uDED2', t: '4 cart fills /month', accent: C.accent
+    emoji: '\uD83D\uDED2', t: '4 cart fills per month', accent: C.accent
   }, {
-    emoji: '\uD83D\uDD04', t: '3 regens /week', accent: C.accentSoft
+    emoji: '\uD83D\uDD04', t: '3 regens per week', accent: C.accentSoft
   }, {
-    emoji: '\u2665', t: 'Expanded recipe library', accent: '#EF9A9A'
+    emoji: '\uD83D\uDD13', t: '6 swaps per meal', accent: '#80DEEA'
   }, {
-    emoji: '\uD83D\uDD13', t: '6 swaps /meal', accent: '#80DEEA'
+    emoji: '\uD83C\uDF7D\uFE0F', t: 'More recipes', accent: '#EF9A9A'
   }, {
     emoji: '\u2728', t: 'AI insight', accent: '#81D4FA'
   }, {
@@ -4484,9 +4481,9 @@ function AllSortedPrototype() {
   }].map(f => /*#__PURE__*/React.createElement("div", {
     key: f.t,
     style: {
-      background: "linear-gradient(135deg, ".concat(f.accent, "0D 0%, ").concat(C.bgSec, " 60%)"),
+      background: f.accent + '22',
       borderRadius: 14, padding: '14px 10px',
-      border: "1px solid ".concat(f.accent, "33"),
+      border: "1px solid ".concat(f.accent, "66"),
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 26 } }, f.emoji),
@@ -4659,7 +4656,7 @@ function AllSortedPrototype() {
         marginTop: 1,
         flexShrink: 0
       }
-    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), /*#__PURE__*/React.createElement("button", {onClick: () => isPremium ? toggleDisliked(mealIdx) : (showToast('Premium feature'), go('paywall')), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: isPremium?(dislikedSet.has(mealIdx)?1:0.4):0.3, color: isPremium?(dislikedSet.has(mealIdx)?C.error:C.textHint):C.textHint}}, isPremium?'👎':'🔒')), /*#__PURE__*/React.createElement("div", {
+    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), isPremium ? /*#__PURE__*/React.createElement("button", {onClick: () => toggleDisliked(mealIdx), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: dislikedSet.has(mealIdx)?1:0.4}}, '👎') : null), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         padding: '12px 16px 0',
@@ -6217,10 +6214,10 @@ function AllSortedPrototype() {
       style: {
         background: 'none',
         border: 'none',
-        fontSize: 22,
+        fontSize: 26,
         cursor: 'pointer',
         color: C.textSec,
-        padding: '0 2px',
+        padding: '0 4px',
         lineHeight: 1
       }
     }, "\u2039")
@@ -6302,24 +6299,19 @@ function AllSortedPrototype() {
         overflow: 'hidden'
       }
     }, /*#__PURE__*/React.createElement(ScreenHeader, {
-      left: /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }
-      }, /*#__PURE__*/React.createElement("button", {
+      left: /*#__PURE__*/React.createElement("button", {
         onClick: () => go('pastweeks', { back: true }),
         style: {
           background: 'none',
           border: 'none',
-          fontSize: 22,
+          fontSize: 26,
           cursor: 'pointer',
           color: C.textSec,
-          padding: '0 2px',
+          padding: '0 4px',
           lineHeight: 1
         }
-      }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+      }, "\u2039"),
+      badge: /*#__PURE__*/React.createElement("span", {
         style: {
           background: 'transparent',
           border: "1px solid ".concat(C.border),
@@ -6330,7 +6322,7 @@ function AllSortedPrototype() {
           color: C.textSec,
           whiteSpace: 'nowrap'
         }
-      }, monthLabel)),
+      }, monthLabel),
       center: /*#__PURE__*/React.createElement("span", {
         style: {
           ...T.logo,
@@ -6534,7 +6526,7 @@ function AllSortedPrototype() {
     }, /*#__PURE__*/React.createElement(ScreenHeader, {
       left: /*#__PURE__*/React.createElement("button", {
         onClick: () => goBack(),
-        style: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: C.textSec, padding: '0 2px', lineHeight: 1 }
+        style: { background: 'none', border: 'none', fontSize: 26, cursor: 'pointer', color: C.textSec, padding: '0 4px', lineHeight: 1 }
       }, "\u2039"),
       right: /*#__PURE__*/React.createElement("button", {
         onClick: openFilters,
