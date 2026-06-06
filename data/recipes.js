@@ -18,7 +18,6 @@ const PLAN_A = [{
   fibre: 2,
   allergens: ['milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [14, 16],
   ingredients: [{
     n: 'Chicken breast',
     q: '600g',
@@ -60,7 +59,6 @@ const PLAN_A = [{
   fibre: 4,
   allergens: ['fish', 'gluten'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [17, 19],
   ingredients: [{
     n: 'Smoked salmon',
     q: '200g',
@@ -107,7 +105,6 @@ const PLAN_A = [{
   fibre: 6,
   allergens: ['gluten', 'celery'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [16, 18],
   ingredients: [{
     n: 'Beef stewing pieces',
     q: '500g',
@@ -154,7 +151,6 @@ const PLAN_A = [{
   fibre: 1,
   allergens: ['fish'],
   incompatible: ['veg', 'vegan'],
-  swaps: [15, 17],
   ingredients: [{
     n: 'Cod fillet',
     q: '2 × 180g',
@@ -196,7 +192,6 @@ const PLAN_A = [{
   fibre: 12,
   allergens: ['mustard', 'celery'],
   incompatible: ['lowcarb'],
-  swaps: [18, 19],
   ingredients: [{
     n: 'Chickpeas',
     q: '2 × 400g tins',
@@ -243,7 +238,6 @@ const PLAN_A = [{
   fibre: 5,
   allergens: ['gluten', 'milk', 'eggs', 'celery', 'mustard'],
   incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
-  swaps: [14, 16],
   ingredients: [{
     n: 'Lamb mince',
     q: '500g',
@@ -295,7 +289,6 @@ const PLAN_A = [{
   fibre: 3,
   allergens: ['gluten', 'milk'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [14, 15],
   ingredients: [{
     n: 'Whole chicken',
     q: '1.6 kg',
@@ -350,7 +343,6 @@ const PLAN_B = [{
   fibre: 1,
   allergens: ['fish', 'soy'],
   incompatible: ['veg', 'vegan'],
-  swaps: [15, 17],
   ingredients: [{
     n: 'Salmon fillet',
     q: '2 × 180g',
@@ -392,7 +384,6 @@ const PLAN_B = [{
   fibre: 4,
   allergens: ['gluten'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [16, 19],
   ingredients: [{
     n: 'Beef mince',
     q: '500g',
@@ -439,7 +430,6 @@ const PLAN_B = [{
   fibre: 3,
   allergens: ['gluten', 'milk', 'eggs'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [14, 17],
   ingredients: [{
     n: 'Chicken thighs',
     q: '600g, diced',
@@ -486,7 +476,6 @@ const PLAN_B = [{
   fibre: 4,
   allergens: ['fish'],
   incompatible: ['veg', 'vegan'],
-  swaps: [15, 18],
   ingredients: [{
     n: 'Cod fillet',
     q: '2 × 180g',
@@ -528,7 +517,6 @@ const PLAN_B = [{
   fibre: 3,
   allergens: ['fish'],
   incompatible: ['veg', 'vegan'],
-  swaps: [14, 18],
   ingredients: [{
     n: 'Chicken breast',
     q: '600g, sliced',
@@ -575,7 +563,6 @@ const PLAN_B = [{
   fibre: 4,
   allergens: ['gluten', 'milk', 'eggs'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [16, 19],
   ingredients: [{
     n: 'Beef mince',
     q: '500g',
@@ -622,7 +609,6 @@ const PLAN_B = [{
   fibre: 3,
   allergens: [],
   incompatible: ['veg', 'vegan'],
-  swaps: [14, 17],
   ingredients: [{
     n: 'Pork belly',
     q: '1 kg',
@@ -943,7 +929,6 @@ const SWAP_POOL = [{
   fibre: 0,
   allergens: ['milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [33],
   ingredients: [
     { n: 'Sirloin steak', q: '220g per person', price: 8.99, cat: 'Meat & Fish' },
     { n: 'Butter', q: '40g', price: 0.80, cat: 'Dairy & Eggs' },
@@ -972,7 +957,6 @@ const SWAP_POOL = [{
   fibre: 1,
   allergens: ['fish', 'milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [34],
   ingredients: [
     { n: 'Salmon fillets', q: '2 x 180g', price: 7.49, cat: 'Meat & Fish' },
     { n: 'Cream', q: '150ml', price: 1.49, cat: 'Dairy & Eggs' },
@@ -1002,7 +986,6 @@ const SWAP_POOL = [{
   fibre: 3,
   allergens: ['milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [26],
   ingredients: [
     { n: 'Chicken thighs', q: '600g, cubed', price: 5.49, cat: 'Meat & Fish' },
     { n: 'Butter', q: '40g', price: 0.80, cat: 'Dairy & Eggs' },
@@ -1034,7 +1017,6 @@ const SWAP_POOL = [{
   fibre: 5,
   allergens: ['milk', 'gluten'],
   incompatible: ['vegan', 'gf', 'lowcarb'],
-  swaps: [],
   ingredients: [
     { n: 'Mixed mushrooms', q: '500g, sliced', price: 3.49, cat: 'Vegetables & Fruit' },
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
@@ -1065,7 +1047,6 @@ const SWAP_POOL = [{
   fibre: 16,
   allergens: [],
   incompatible: ['lowcarb'],
-  swaps: [27],
   ingredients: [
     { n: 'Black beans', q: '2 x 400g tins, drained', price: 1.58, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
@@ -1097,7 +1078,6 @@ const SWAP_POOL = [{
   fibre: 5,
   allergens: ['soya', 'gluten'],
   incompatible: ['lowcarb', 'gf'],
-  swaps: [],
   ingredients: [
     { n: 'Firm tofu', q: '400g, cubed', price: 2.49, cat: 'Pantry & Dry' },
     { n: 'Broccoli', q: '1 head, cut into florets', price: 1.29, cat: 'Vegetables & Fruit' },
@@ -1129,7 +1109,6 @@ const SWAP_POOL = [{
   fibre: 3,
   allergens: ['milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [22],
   ingredients: [
     { n: 'Chicken breast', q: '600g, cubed', price: 5.99, cat: 'Meat & Fish' },
     { n: 'Greek yogurt', q: '150g', price: 1.19, cat: 'Dairy & Eggs' },
@@ -1160,7 +1139,6 @@ const SWAP_POOL = [{
   fibre: 8,
   allergens: [],
   incompatible: ['veg', 'vegan', 'lowcarb'],
-  swaps: [24],
   ingredients: [
     { n: 'Beef mince', q: '500g', price: 5.49, cat: 'Meat & Fish' },
     { n: 'Kidney beans', q: '400g tin, drained', price: 0.79, cat: 'Pantry & Dry' },
@@ -1191,7 +1169,6 @@ const SWAP_POOL = [{
   fibre: 5,
   allergens: ['gluten'],
   incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
-  swaps: [],
   ingredients: [
     { n: 'Lamb shoulder', q: '700g, cubed', price: 8.99, cat: 'Meat & Fish' },
     { n: 'Couscous', q: '250g', price: 1.49, cat: 'Pantry & Dry' },
@@ -1223,7 +1200,6 @@ const SWAP_POOL = [{
   fibre: 3,
   allergens: ['crustaceans', 'gluten', 'peanuts', 'eggs'],
   incompatible: ['veg', 'vegan', 'lowcarb', 'gf'],
-  swaps: [],
   ingredients: [
     { n: 'Raw king prawns', q: '200g', price: 4.99, cat: 'Meat & Fish' },
     { n: 'Flat rice noodles', q: '150g', price: 1.49, cat: 'Pantry & Dry' },
@@ -1254,7 +1230,6 @@ const SWAP_POOL = [{
   fibre: 4,
   allergens: ['sesame', 'milk'],
   incompatible: ['veg', 'vegan'],
-  swaps: [],
   ingredients: [
     { n: 'Chicken thighs', q: '400g', price: 3.99, cat: 'Meat & Fish' },
     { n: 'Greek yogurt', q: '100g', price: 0.79, cat: 'Dairy & Eggs' },
@@ -1285,7 +1260,6 @@ const SWAP_POOL = [{
   fibre: 7,
   allergens: [],
   incompatible: ['lowcarb'],
-  swaps: [],
   ingredients: [
     { n: 'Basmati rice', q: '300g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Mixed vegetables', q: '400g (carrot, peas, cauliflower)', price: 2.49, cat: 'Vegetables & Fruit' },
@@ -1316,7 +1290,6 @@ const SWAP_POOL = [{
   fibre: 5,
   allergens: ['gluten', 'eggs'],
   incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
-  swaps: [],
   ingredients: [
     { n: 'Pork loin steaks', q: '2 x 180g', price: 5.99, cat: 'Meat & Fish' },
     { n: 'Breadcrumbs', q: '80g', price: 0.99, cat: 'Pantry & Dry' },
@@ -1346,7 +1319,6 @@ const SWAP_POOL = [{
   fibre: 6,
   allergens: [],
   incompatible: ['veg', 'vegan'],
-  swaps: [20],
   ingredients: [
     { n: 'Lamb shoulder', q: '700g, cubed', price: 7.99, cat: 'Meat & Fish' },
     { n: 'Potato', q: '400g, cubed', price: 1.29, cat: 'Vegetables & Fruit' },
@@ -1377,7 +1349,6 @@ const SWAP_POOL = [{
   fibre: 3,
   allergens: ['fish', 'gluten', 'sesame'],
   incompatible: ['veg', 'vegan', 'gf'],
-  swaps: [21],
   ingredients: [
     { n: 'Salmon fillets', q: '2 x 180g', price: 7.49, cat: 'Meat & Fish' },
     { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
@@ -1408,7 +1379,6 @@ const SWAP_POOL = [{
   fibre: 5,
   allergens: ['gluten'],
   incompatible: ['gf', 'lowcarb'],
-  swaps: [],
   ingredients: [
     { n: 'Penne pasta', q: '350g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '2 x 400g tins', price: 1.58, cat: 'Pantry & Dry' },
@@ -1423,6 +1393,704 @@ const SWAP_POOL = [{
     'Pour in tomatoes, breaking them up. Season well and simmer uncovered 15 minutes until thick.',
     'Drain pasta and add to the sauce. Toss well, adding a splash of pasta water if needed.',
     'Serve immediately with fresh basil torn over the top.'
+  ]
+},{
+  id: 36,
+  name: 'Spaghetti Carbonara',
+  emoji: '🍝',
+  photo: PHOTO('1621996346565-e3dbc646d9a9'),
+  cuisine: 'Italian',
+  time: '20 min',
+  serves: 2,
+  protein: 28,
+  carbs: 62,
+  fat: 22,
+  fibre: 3,
+  allergens: ['gluten', 'eggs', 'milk'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
+  ingredients: [
+    { n: 'Spaghetti', q: '200g', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Pancetta', q: '150g, diced', price: 2.99, cat: 'Meat & Fish' },
+    { n: 'Eggs', q: '2 whole + 2 yolks', price: 1.20, cat: 'Dairy & Eggs' },
+    { n: 'Pecorino Romano', q: '60g, finely grated', price: 1.99, cat: 'Dairy & Eggs' },
+    { n: 'Black pepper', q: 'generous amount', price: 0.30, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook spaghetti in heavily salted boiling water until al dente. Reserve 2 cups of pasta water before draining.',
+    'Fry pancetta in a cold pan over medium heat until the fat renders and it crisps up, about 5 minutes. Remove from heat.',
+    'Whisk together eggs, yolks, and most of the cheese. Season very generously with black pepper.',
+    'Add drained pasta to the pancetta pan. Add a big splash of pasta water and toss well.',
+    'Pour in the egg mixture, tossing constantly and adding more pasta water until silky and creamy. Never let it scramble. Serve immediately with the remaining cheese.'
+  ]
+},{
+  id: 37,
+  name: 'Chicken Parmigiana',
+  emoji: '🍗',
+  photo: PHOTO('1632778149955-e80f8ceca2e8'),
+  cuisine: 'Italian',
+  time: '35 min',
+  serves: 2,
+  protein: 48,
+  carbs: 28,
+  fat: 18,
+  fibre: 4,
+  allergens: ['gluten', 'eggs', 'milk'],
+  incompatible: ['veg', 'vegan', 'gf'],
+  ingredients: [
+    { n: 'Chicken breast', q: '2, butterflied', price: 5.49, cat: 'Meat & Fish' },
+    { n: 'Breadcrumbs', q: '80g', price: 0.99, cat: 'Pantry & Dry' },
+    { n: 'Egg', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
+    { n: 'Passata', q: '200ml', price: 0.89, cat: 'Pantry & Dry' },
+    { n: 'Mozzarella', q: '125g, torn', price: 2.49, cat: 'Dairy & Eggs' },
+    { n: 'Parmesan', q: '30g, grated', price: 1.20, cat: 'Dairy & Eggs' },
+    { n: 'Fresh basil', q: 'handful', price: 0.99, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Preheat oven to 200°C. Bash chicken breasts to an even 1.5cm thickness between cling film.',
+    'Dip each breast in beaten egg, then press firmly into breadcrumbs on both sides.',
+    'Shallow-fry crumbed chicken in hot oil 3 minutes each side until deep golden. Transfer to a baking dish.',
+    'Spoon passata over each breast. Top generously with mozzarella and parmesan.',
+    'Bake 12 minutes until cheese is molten and bubbling. Rest 2 minutes and scatter with fresh basil.'
+  ]
+},{
+  id: 38,
+  name: 'Gnocchi with Gorgonzola & Spinach',
+  emoji: '🥬',
+  photo: PHOTO('1579349443343-73da56a71a20'),
+  cuisine: 'Italian',
+  time: '20 min',
+  serves: 2,
+  protein: 18,
+  carbs: 52,
+  fat: 22,
+  fibre: 4,
+  allergens: ['gluten', 'milk', 'tree nuts'],
+  incompatible: ['vegan', 'gf', 'lowcarb'],
+  ingredients: [
+    { n: 'Fresh gnocchi', q: '500g', price: 2.49, cat: 'Pantry & Dry' },
+    { n: 'Gorgonzola', q: '100g, crumbled', price: 2.99, cat: 'Dairy & Eggs' },
+    { n: 'Double cream', q: '150ml', price: 1.49, cat: 'Dairy & Eggs' },
+    { n: 'Baby spinach', q: '100g', price: 1.49, cat: 'Vegetables & Fruit' },
+    { n: 'Walnuts', q: '30g, roughly chopped', price: 0.99, cat: 'Pantry & Dry' },
+    { n: 'Nutmeg', q: 'pinch, freshly grated', price: 0.30, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook gnocchi in salted boiling water until they float to the surface, about 2 minutes. Reserve a cup of water and drain.',
+    'Warm cream in a wide pan over medium heat. Add gorgonzola and stir until melted and smooth.',
+    'Add a grating of nutmeg and a good turn of black pepper.',
+    'Add drained gnocchi, toss gently to coat. Add a splash of pasta water to loosen if needed.',
+    'Wilt in the spinach for 30 seconds, then divide between bowls. Top with toasted walnuts.'
+  ]
+},{
+  id: 39,
+  name: 'Pesto Pasta with Cherry Tomatoes',
+  emoji: '🍝',
+  photo: PHOTO('1598866594230-a7c12756260f'),
+  cuisine: 'Italian',
+  time: '20 min',
+  serves: 2,
+  protein: 14,
+  carbs: 64,
+  fat: 20,
+  fibre: 5,
+  allergens: ['gluten', 'milk', 'tree nuts'],
+  incompatible: ['vegan', 'gf', 'lowcarb'],
+  ingredients: [
+    { n: 'Fusilli or penne', q: '250g', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Basil pesto', q: '4 tbsp', price: 2.29, cat: 'Pantry & Dry' },
+    { n: 'Cherry tomatoes', q: '250g, halved', price: 1.49, cat: 'Vegetables & Fruit' },
+    { n: 'Parmesan', q: '30g, grated', price: 1.20, cat: 'Dairy & Eggs' },
+    { n: 'Toasted pine nuts', q: '2 tbsp', price: 1.49, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Cook pasta in salted boiling water until al dente. Reserve a cup of pasta water.',
+    'Heat olive oil in a wide pan over high heat. Add cherry tomatoes and cook 3 minutes until blistered and bursting.',
+    'Drain pasta and add to the tomato pan. Remove from heat.',
+    'Stir in pesto, adding a splash of pasta water to create a loose, glossy sauce.',
+    'Divide between bowls, top with parmesan and toasted pine nuts. Serve immediately.'
+  ]
+},{
+  id: 40,
+  name: 'Chicken Katsu Curry',
+  emoji: '🍛',
+  photo: PHOTO('1677743540715-d4fe04852225'),
+  cuisine: 'Asian',
+  time: '40 min',
+  serves: 2,
+  protein: 40,
+  carbs: 56,
+  fat: 14,
+  fibre: 4,
+  allergens: ['gluten', 'eggs'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
+  ingredients: [
+    { n: 'Chicken breast', q: '2, flattened', price: 5.49, cat: 'Meat & Fish' },
+    { n: 'Panko breadcrumbs', q: '80g', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Plain flour', q: '50g', price: 0.30, cat: 'Pantry & Dry' },
+    { n: 'Egg', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
+    { n: 'Japanese curry sauce', q: '3 roux cubes or 1 packet', price: 2.99, cat: 'Pantry & Dry' },
+    { n: 'Basmati rice', q: '180g', price: 0.90, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Cook rice per packet. Make curry sauce: simmer an onion and the roux blocks with 400ml water for 10 minutes, stirring until smooth.',
+    'Bash chicken to an even 1cm thickness. Coat in flour, then beaten egg, then panko — pressing firmly at each stage.',
+    'Pan-fry in 1cm of oil over medium heat, 4 minutes each side, until deep golden and cooked through.',
+    'Drain on paper and slice diagonally into thick strips.',
+    'Serve rice in a bowl, chicken alongside, curry sauce poured over one half. Finished with pickled ginger if you have it.'
+  ]
+},{
+  id: 41,
+  name: 'Miso Glazed Salmon',
+  emoji: '🐟',
+  photo: PHOTO('1519708227418-c8fd9a32b7a2'),
+  cuisine: 'Asian',
+  time: '20 min',
+  serves: 2,
+  protein: 36,
+  carbs: 12,
+  fat: 18,
+  fibre: 1,
+  allergens: ['fish', 'soy', 'gluten'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Salmon fillets', q: '2 × 180g', price: 7.49, cat: 'Meat & Fish' },
+    { n: 'White miso paste', q: '2 tbsp', price: 2.49, cat: 'Pantry & Dry' },
+    { n: 'Mirin', q: '1 tbsp', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Soy sauce', q: '1 tbsp', price: 0.60, cat: 'Pantry & Dry' },
+    { n: 'Sesame oil', q: '1 tsp', price: 0.80, cat: 'Pantry & Dry' },
+    { n: 'Spring onions & sesame seeds', q: 'to garnish', price: 0.80, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Mix miso, mirin, soy sauce and sesame oil into a smooth glaze.',
+    'Pat salmon dry. Spread glaze generously over the flesh side of each fillet.',
+    'Heat an oven-proof pan over medium-high. Cook salmon skin-side down for 3 minutes.',
+    'Flip, brush remaining glaze on the skin side, then transfer to a 200°C oven for 5 minutes.',
+    'Remove when glaze is caramelised and salmon just cooked through. Scatter with spring onions and sesame seeds.'
+  ]
+},{
+  id: 42,
+  name: 'Beef Bulgogi Bowl',
+  emoji: '🥩',
+  photo: PHOTO('1604908177453-7462950a6a3b'),
+  cuisine: 'Asian',
+  time: '25 min',
+  serves: 2,
+  protein: 36,
+  carbs: 44,
+  fat: 16,
+  fibre: 3,
+  allergens: ['soy', 'sesame', 'gluten'],
+  incompatible: ['veg', 'vegan', 'gf'],
+  ingredients: [
+    { n: 'Sirloin steak', q: '300g, very thinly sliced', price: 7.99, cat: 'Meat & Fish' },
+    { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
+    { n: 'Sesame oil', q: '1 tbsp', price: 0.80, cat: 'Pantry & Dry' },
+    { n: 'Garlic & ginger', q: '3 cloves / 1cm piece', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Brown sugar', q: '1 tbsp', price: 0.30, cat: 'Pantry & Dry' },
+    { n: 'Basmati rice & spring onions', q: '180g / 4', price: 1.50, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Cook rice per packet. Mix soy sauce, sesame oil, garlic, ginger and sugar. Coat beef and rest 10 minutes.',
+    'Heat a wok or wide pan over the highest possible heat until smoking.',
+    'Cook beef in two batches — do not overcrowd. Each batch takes 60 to 90 seconds. Set aside.',
+    'Return all beef to the pan for 15 seconds to heat through together.',
+    'Serve over rice in bowls. Drizzle any pan juices over. Top with sliced spring onions.'
+  ]
+},{
+  id: 43,
+  name: 'Korean Bibimbap',
+  emoji: '🍲',
+  photo: PHOTO('1718777791239-c473e9ce7376'),
+  cuisine: 'Asian',
+  time: '30 min',
+  serves: 2,
+  protein: 22,
+  carbs: 56,
+  fat: 14,
+  fibre: 6,
+  allergens: ['soy', 'sesame', 'eggs'],
+  incompatible: ['vegan', 'gf'],
+  ingredients: [
+    { n: 'Short grain rice', q: '200g', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Mixed veg (carrot, courgette, spinach, mushrooms)', q: '300g', price: 2.49, cat: 'Vegetables & Fruit' },
+    { n: 'Eggs', q: '2', price: 0.80, cat: 'Dairy & Eggs' },
+    { n: 'Gochujang paste', q: '2 tbsp', price: 2.29, cat: 'Pantry & Dry' },
+    { n: 'Sesame oil & soy sauce', q: '1 tbsp each', price: 1.00, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Cook rice per packet. Cut all vegetables into thin strips or julienne.',
+    'Sauté each vegetable separately in sesame oil 2 minutes with a dash of soy sauce. Keep warm.',
+    'Fry eggs sunny-side-up in a little oil — yolk should still be runny.',
+    'Divide rice between bowls. Arrange each vegetable in a separate cluster around the edge.',
+    'Place a fried egg in the centre. Add a spoonful of gochujang. Drizzle with sesame oil and mix everything together before eating.'
+  ]
+},{
+  id: 44,
+  name: 'Paneer Tikka Masala',
+  emoji: '🧀',
+  photo: PHOTO('1666001120694-3ebe8fd207be'),
+  cuisine: 'Indian',
+  time: '35 min',
+  serves: 4,
+  protein: 24,
+  carbs: 18,
+  fat: 20,
+  fibre: 4,
+  allergens: ['milk'],
+  incompatible: ['vegan', 'lowcarb'],
+  ingredients: [
+    { n: 'Paneer', q: '400g, cubed', price: 3.49, cat: 'Dairy & Eggs' },
+    { n: 'Tikka masala paste', q: '3 tbsp', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Double cream', q: '100ml', price: 0.99, cat: 'Dairy & Eggs' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
+    { n: 'Onion', q: '1, diced', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.79, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Fry paneer cubes in a non-stick pan over high heat, turning, until golden on all sides. Set aside.',
+    'Soften onion in the same pan over medium heat, 5 minutes. Add garlic-ginger paste and tikka masala paste, cook 2 minutes.',
+    'Pour in tomatoes and simmer uncovered 10 minutes until sauce deepens.',
+    'Stir in cream and add the fried paneer. Simmer 5 minutes.',
+    'Season with salt, scatter fresh coriander over and serve with basmati rice and naan.'
+  ]
+},{
+  id: 45,
+  name: 'Lamb Rogan Josh',
+  emoji: '🍲',
+  photo: PHOTO('1596797038530-2c107229654b'),
+  cuisine: 'Indian',
+  time: '70 min',
+  serves: 4,
+  protein: 38,
+  carbs: 10,
+  fat: 24,
+  fibre: 3,
+  allergens: ['milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Lamb shoulder', q: '700g, cubed', price: 8.99, cat: 'Meat & Fish' },
+    { n: 'Onions', q: '2, finely sliced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Greek yogurt', q: '150g', price: 1.19, cat: 'Dairy & Eggs' },
+    { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Rogan josh paste', q: '3 tbsp', price: 1.99, cat: 'Pantry & Dry' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Brown lamb in batches in a heavy pan over high heat. Set aside.',
+    'Fry onions in the same pan over medium heat 10 minutes until deep golden.',
+    'Add garlic-ginger paste and rogan josh paste. Stir and cook 2 minutes until fragrant.',
+    'Return lamb to the pan. Add yogurt a spoonful at a time, stirring between each addition to prevent splitting.',
+    'Add tomatoes, bring to a boil, then reduce and simmer covered 45 minutes until lamb is completely tender. Serve with basmati rice.'
+  ]
+},{
+  id: 46,
+  name: 'Chicken Saag',
+  emoji: '🍗',
+  photo: PHOTO('1621515554656-3da68ba128b1'),
+  cuisine: 'Indian',
+  time: '35 min',
+  serves: 4,
+  protein: 40,
+  carbs: 8,
+  fat: 16,
+  fibre: 5,
+  allergens: ['milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Chicken thighs', q: '600g, cubed', price: 5.49, cat: 'Meat & Fish' },
+    { n: 'Frozen spinach', q: '300g, defrosted', price: 1.49, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '1, diced', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Double cream', q: '100ml', price: 0.99, cat: 'Dairy & Eggs' },
+    { n: 'Ground cumin, coriander, turmeric & garam masala', q: '1 tsp each', price: 0.80, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Fry onion in oil over medium heat 6 minutes until golden. Add garlic-ginger paste and all spices, cook 1 minute.',
+    'Add chicken and cook 8 minutes, stirring, until sealed and golden.',
+    'Squeeze excess water from spinach and add to the pan. Stir well to combine.',
+    'Pour in cream, stir and simmer uncovered 10 minutes until chicken is cooked through and sauce thickens.',
+    'Season with salt. Serve with basmati rice and warm naan.'
+  ]
+},{
+  id: 47,
+  name: 'Dal Makhani',
+  emoji: '🥣',
+  photo: PHOTO('1627366422957-3efa9c6df0fc'),
+  cuisine: 'Indian',
+  time: '50 min',
+  serves: 4,
+  protein: 14,
+  carbs: 40,
+  fat: 12,
+  fibre: 14,
+  allergens: ['milk'],
+  incompatible: ['vegan', 'lowcarb'],
+  ingredients: [
+    { n: 'Whole black lentils (urad dal)', q: '250g', price: 1.99, cat: 'Pantry & Dry' },
+    { n: 'Kidney beans', q: '400g tin, drained', price: 0.79, cat: 'Pantry & Dry' },
+    { n: 'Butter', q: '50g', price: 1.00, cat: 'Dairy & Eggs' },
+    { n: 'Double cream', q: '100ml', price: 0.99, cat: 'Dairy & Eggs' },
+    { n: 'Onion', q: '1, finely diced', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic & ginger paste & tomato purée', q: '2 tbsp each', price: 1.80, cat: 'Pantry & Dry' },
+    { n: 'Garam masala', q: '1 tsp', price: 0.40, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Boil lentils in plenty of water 30 minutes until just tender. Drain.',
+    'Melt butter in a heavy pan. Fry onion 8 minutes until golden. Add garlic-ginger paste and garam masala, cook 1 minute.',
+    'Add tomato purée and stir 2 minutes until the paste darkens.',
+    'Add lentils and kidney beans with 200ml water. Simmer 15 minutes, stirring, until thick and creamy.',
+    'Stir in cream and simmer 2 more minutes. Serve with naan, a swirl of cream and chopped coriander.'
+  ]
+},{
+  id: 48,
+  name: 'Chicken Fajitas',
+  emoji: '🌮',
+  photo: PHOTO('1689773976415-293dd893f77e'),
+  cuisine: 'Mexican',
+  time: '25 min',
+  serves: 2,
+  protein: 38,
+  carbs: 34,
+  fat: 12,
+  fibre: 4,
+  allergens: ['gluten'],
+  incompatible: ['veg', 'vegan', 'gf'],
+  ingredients: [
+    { n: 'Chicken breast', q: '400g, sliced', price: 4.49, cat: 'Meat & Fish' },
+    { n: 'Mixed peppers', q: '2, sliced', price: 1.29, cat: 'Vegetables & Fruit' },
+    { n: 'Red onion', q: '1, sliced', price: 0.50, cat: 'Vegetables & Fruit' },
+    { n: 'Fajita seasoning', q: '2 tbsp', price: 0.99, cat: 'Herbs & Spices' },
+    { n: 'Flour tortillas', q: '6', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Sour cream & guacamole', q: 'to serve', price: 2.49, cat: 'Dairy & Eggs' }
+  ],
+  steps: [
+    'Toss chicken slices with half the fajita seasoning and a drizzle of oil.',
+    'Heat a wide pan or griddle over very high heat until smoking. Cook chicken 4 to 5 minutes, tossing, until charred at edges. Remove.',
+    'In the same pan, cook peppers and onion with remaining seasoning 4 minutes until charred and just tender.',
+    'Warm tortillas in a dry pan for 30 seconds each side.',
+    'Serve chicken and veg with sour cream and guacamole for everyone to assemble their own.'
+  ]
+},{
+  id: 49,
+  name: 'Beef Tacos',
+  emoji: '🌮',
+  photo: PHOTO('1599974579688-8dbdd335c77f'),
+  cuisine: 'Mexican',
+  time: '25 min',
+  serves: 2,
+  protein: 32,
+  carbs: 32,
+  fat: 18,
+  fibre: 5,
+  allergens: ['gluten', 'milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Beef mince', q: '400g', price: 4.49, cat: 'Meat & Fish' },
+    { n: 'Taco seasoning', q: '2 tbsp', price: 0.99, cat: 'Herbs & Spices' },
+    { n: 'Flour or corn tortillas', q: '8 small', price: 1.79, cat: 'Pantry & Dry' },
+    { n: 'Cherry tomatoes', q: '150g, chopped', price: 1.19, cat: 'Vegetables & Fruit' },
+    { n: 'Cheddar', q: '60g, grated', price: 0.80, cat: 'Dairy & Eggs' },
+    { n: 'Sour cream & lime', q: '3 tbsp / 1', price: 1.00, cat: 'Dairy & Eggs' }
+  ],
+  steps: [
+    'Brown beef over high heat, breaking up lumps, until deeply coloured — about 6 minutes.',
+    'Add taco seasoning and 4 tbsp water. Stir and cook 2 minutes until liquid reduces and beef is well coated.',
+    'Char tortillas directly on a gas flame or in a hot dry pan until lightly blistered.',
+    'Mix cherry tomatoes with a squeeze of lime and pinch of salt for a quick salsa.',
+    'Fill each tortilla with beef, top with cheese, sour cream and salsa. Serve immediately.'
+  ]
+},{
+  id: 50,
+  name: 'Baja Fish Tacos',
+  emoji: '🌮',
+  photo: PHOTO('1551504734-5ee1c4a1479b'),
+  cuisine: 'Mexican',
+  time: '25 min',
+  serves: 2,
+  protein: 30,
+  carbs: 32,
+  fat: 12,
+  fibre: 4,
+  allergens: ['fish', 'gluten', 'eggs', 'milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'White fish fillet (cod or haddock)', q: '300g', price: 4.99, cat: 'Meat & Fish' },
+    { n: 'Taco seasoning', q: '1 tbsp', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Corn tortillas', q: '6 small', price: 1.79, cat: 'Pantry & Dry' },
+    { n: 'Coleslaw mix', q: '150g', price: 0.99, cat: 'Vegetables & Fruit' },
+    { n: 'Chipotle mayonnaise', q: '4 tbsp', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Lime', q: '2', price: 0.80, cat: 'Vegetables & Fruit' }
+  ],
+  steps: [
+    'Cut fish into strips. Toss with taco seasoning and a drizzle of oil.',
+    'Cook in a hot pan 2 to 3 minutes per side until cooked through and crisping at the edges.',
+    'Dress coleslaw mix with a squeeze of lime juice and a pinch of salt.',
+    'Char tortillas in a dry pan or directly on a gas flame for 30 seconds each side.',
+    'Assemble: coleslaw first, fish on top, finish with a drizzle of chipotle mayo and a squeeze of lime.'
+  ]
+},{
+  id: 51,
+  name: 'Shakshuka',
+  emoji: '🍳',
+  photo: PHOTO('1590412200988-a436970781fa'),
+  cuisine: 'Middle Eastern',
+  time: '25 min',
+  serves: 2,
+  protein: 18,
+  carbs: 22,
+  fat: 14,
+  fibre: 6,
+  allergens: ['eggs', 'milk'],
+  incompatible: ['vegan', 'lowcarb'],
+  ingredients: [
+    { n: 'Eggs', q: '4', price: 1.60, cat: 'Dairy & Eggs' },
+    { n: 'Chopped tomatoes', q: '2 × 400g tins', price: 1.58, cat: 'Pantry & Dry' },
+    { n: 'Onion', q: '1, diced', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Red pepper', q: '1, diced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic', q: '3 cloves, sliced', price: 0.50, cat: 'Vegetables & Fruit' },
+    { n: 'Ground cumin, smoked paprika & chilli flakes', q: '1 tsp each', price: 0.70, cat: 'Herbs & Spices' },
+    { n: 'Feta', q: '80g, crumbled', price: 1.49, cat: 'Dairy & Eggs' }
+  ],
+  steps: [
+    'Heat oil in a wide, deep pan. Soften onion and pepper over medium heat 6 minutes.',
+    'Add garlic, cumin, paprika and chilli flakes. Cook 1 minute until fragrant.',
+    'Pour in tomatoes, season well, and simmer uncovered 10 minutes until the sauce thickens.',
+    'Make 4 wells in the sauce. Crack an egg into each well. Cover with a lid.',
+    'Cook 5 to 7 minutes until whites are set but yolks still runny. Scatter feta over and serve with crusty bread.'
+  ]
+},{
+  id: 52,
+  name: 'Lamb Kofta with Tzatziki',
+  emoji: '🥙',
+  photo: PHOTO('1734987052573-0fbe611842ae'),
+  cuisine: 'Middle Eastern',
+  time: '30 min',
+  serves: 2,
+  protein: 38,
+  carbs: 14,
+  fat: 24,
+  fibre: 3,
+  allergens: ['gluten', 'milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Lamb mince', q: '400g', price: 5.99, cat: 'Meat & Fish' },
+    { n: 'Ground cumin, coriander & cinnamon', q: '1 tsp each', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Garlic', q: '2 cloves, grated', price: 0.35, cat: 'Vegetables & Fruit' },
+    { n: 'Tzatziki', q: '150g', price: 1.99, cat: 'Dairy & Eggs' },
+    { n: 'Flatbreads', q: '2', price: 0.99, cat: 'Pantry & Dry' },
+    { n: 'Red onion & fresh mint', q: 'half / handful', price: 0.80, cat: 'Vegetables & Fruit' }
+  ],
+  steps: [
+    'Combine lamb mince with spices, garlic and a generous pinch of salt. Mix well with your hands until everything is evenly distributed.',
+    'Divide into 8 portions. Shape each into an elongated sausage on a skewer or free-form log.',
+    'Cook on a hot griddle or wide pan 3 to 4 minutes per side until cooked through and charred at edges.',
+    'Warm flatbreads in a dry pan.',
+    'Serve kofta on flatbreads with tzatziki, thinly sliced red onion and fresh mint.'
+  ]
+},{
+  id: 53,
+  name: 'Greek Moussaka',
+  emoji: '🫕',
+  photo: PHOTO('1777199311086-ec5ff230aefd'),
+  cuisine: 'Mediterranean',
+  time: '80 min',
+  serves: 4,
+  protein: 32,
+  carbs: 22,
+  fat: 28,
+  fibre: 5,
+  allergens: ['gluten', 'milk', 'eggs'],
+  incompatible: ['veg', 'vegan', 'gf'],
+  ingredients: [
+    { n: 'Lamb mince', q: '500g', price: 7.49, cat: 'Meat & Fish' },
+    { n: 'Aubergines', q: '2 large, sliced 1cm thick', price: 2.49, cat: 'Vegetables & Fruit' },
+    { n: 'Onion & garlic', q: '1 / 3 cloves', price: 0.70, cat: 'Vegetables & Fruit' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
+    { n: 'Cinnamon & allspice', q: '½ tsp each', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Béchamel sauce', q: '500ml jar', price: 2.29, cat: 'Pantry & Dry' },
+    { n: 'Parmesan', q: '40g, grated', price: 1.49, cat: 'Dairy & Eggs' }
+  ],
+  steps: [
+    'Preheat oven to 200°C. Brush aubergine slices with oil, spread on trays and roast 20 minutes, flipping once, until golden.',
+    'Brown lamb with onion and garlic. Add cinnamon, allspice and tomatoes. Simmer 15 minutes until thick.',
+    'Layer in a deep baking dish: half the aubergine, all the meat sauce, remaining aubergine.',
+    'Pour béchamel over the top, spread evenly and scatter with parmesan.',
+    'Bake 30 minutes until deep golden. Rest at least 10 minutes before cutting.'
+  ]
+},{
+  id: 54,
+  name: 'Chicken Souvlaki Bowl',
+  emoji: '🥙',
+  photo: PHOTO('1604908176997-125f25cc6f3d'),
+  cuisine: 'Mediterranean',
+  time: '35 min',
+  serves: 2,
+  protein: 44,
+  carbs: 26,
+  fat: 14,
+  fibre: 5,
+  allergens: ['milk', 'gluten'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Chicken breast', q: '400g, cubed', price: 4.49, cat: 'Meat & Fish' },
+    { n: 'Lemon', q: '1, zest and juice', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic & dried oregano', q: '2 cloves / 1 tsp', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Tzatziki', q: '150g', price: 1.99, cat: 'Dairy & Eggs' },
+    { n: 'Cherry tomatoes & cucumber', q: '150g / half', price: 1.50, cat: 'Vegetables & Fruit' },
+    { n: 'Pitta breads', q: '2', price: 0.99, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Mix olive oil, lemon juice, zest, garlic and oregano. Toss chicken in the marinade and rest 15 minutes.',
+    'Cook chicken on a hot griddle or wide pan over high heat 10 to 12 minutes, turning, until charred at the edges and cooked through.',
+    'Halve cherry tomatoes and slice cucumber. Toss with a squeeze of lemon and a pinch of salt.',
+    'Warm pitta in a dry pan.',
+    'Serve chicken over the salad in bowls with a generous dollop of tzatziki and warm pitta alongside.'
+  ]
+},{
+  id: 55,
+  name: 'Spanish Chicken & Chorizo',
+  emoji: '🍗',
+  photo: PHOTO('1565599837634-134bc3aadce8'),
+  cuisine: 'Mediterranean',
+  time: '50 min',
+  serves: 4,
+  protein: 44,
+  carbs: 22,
+  fat: 22,
+  fibre: 5,
+  allergens: ['gluten'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Chicken thighs', q: '6, bone-in skin-on', price: 6.99, cat: 'Meat & Fish' },
+    { n: 'Chorizo', q: '150g, sliced', price: 2.99, cat: 'Meat & Fish' },
+    { n: 'Mixed peppers', q: '2, sliced', price: 1.29, cat: 'Vegetables & Fruit' },
+    { n: 'Cherry tomatoes', q: '250g', price: 1.49, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic', q: '4 cloves, crushed', price: 0.50, cat: 'Vegetables & Fruit' },
+    { n: 'Smoked paprika & chicken stock', q: '1 tsp / 150ml', price: 1.00, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Preheat oven to 200°C. Season chicken and brown skin-side down in an oven-proof pan over high heat 5 minutes. Remove.',
+    'Fry chorizo in the same pan 2 minutes until it releases its oil. Remove.',
+    'Add peppers and garlic to the pan. Cook 3 minutes, then add tomatoes, paprika and stock.',
+    'Return chicken and chorizo to the pan, chicken skin-side up above the vegetables.',
+    'Roast uncovered 30 minutes until chicken skin is crisp and juices run clear. Serve with crusty bread.'
+  ]
+},{
+  id: 56,
+  name: 'Prawn Risotto',
+  emoji: '🦐',
+  photo: PHOTO('1461009683693-342af2f2d6ce'),
+  cuisine: 'Italian',
+  time: '35 min',
+  serves: 2,
+  protein: 28,
+  carbs: 56,
+  fat: 14,
+  fibre: 3,
+  allergens: ['crustaceans', 'milk'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Raw king prawns', q: '250g', price: 5.99, cat: 'Meat & Fish' },
+    { n: 'Arborio rice', q: '200g', price: 1.99, cat: 'Pantry & Dry' },
+    { n: 'Dry white wine', q: '100ml', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Fish or veg stock', q: '800ml, kept hot', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Garlic & shallots', q: '2 cloves / 2', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Butter, lemon & parsley', q: '30g / 1 / handful', price: 1.50, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Keep stock warm. Sauté shallots and garlic in butter over medium heat until soft, about 4 minutes.',
+    'Add rice and stir 2 minutes until translucent. Add wine and stir until fully absorbed.',
+    'Add stock one ladle at a time, stirring constantly. Each ladle should be absorbed before adding the next — about 18 minutes total.',
+    'When rice is just al dente, stir in prawns. They cook in 2 to 3 minutes from the residual heat.',
+    'Remove from heat. Stir in remaining butter and a squeeze of lemon. Season, scatter parsley over and serve immediately.'
+  ]
+},{
+  id: 57,
+  name: 'Creamy Pork Tenderloin',
+  emoji: '🥩',
+  photo: PHOTO('1628268909376-e8c44bb3153f'),
+  cuisine: 'European',
+  time: '30 min',
+  serves: 2,
+  protein: 40,
+  carbs: 6,
+  fat: 24,
+  fibre: 2,
+  allergens: ['milk', 'mustard'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Pork tenderloin', q: '400g', price: 5.99, cat: 'Meat & Fish' },
+    { n: 'Double cream', q: '150ml', price: 1.49, cat: 'Dairy & Eggs' },
+    { n: 'Dijon mustard', q: '2 tsp', price: 0.80, cat: 'Pantry & Dry' },
+    { n: 'Shallots', q: '2, finely diced', price: 0.50, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic & fresh thyme', q: '2 cloves / 3 sprigs', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Chicken stock', q: '100ml', price: 0.50, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Season pork generously. Sear in a hot pan over high heat on all sides, about 6 minutes total, until deep golden.',
+    'Transfer to a 200°C oven for 8 to 10 minutes until just cooked through. Rest 5 minutes.',
+    'In the same pan over medium heat, soften shallots and garlic 3 minutes.',
+    'Add stock and thyme, bubble 2 minutes. Add cream and mustard, stir and simmer 3 minutes until sauce coats a spoon.',
+    'Slice pork on an angle and serve over the sauce with mash or green veg.'
+  ]
+},{
+  id: 58,
+  name: 'Dublin Coddle',
+  emoji: '🥘',
+  photo: PHOTO('1648455320791-a667c8aab7e4'),
+  cuisine: 'Irish',
+  time: '60 min',
+  serves: 4,
+  protein: 26,
+  carbs: 34,
+  fat: 16,
+  fibre: 5,
+  allergens: ['gluten'],
+  incompatible: ['veg', 'vegan', 'gf'],
+  ingredients: [
+    { n: 'Pork sausages', q: '8', price: 4.49, cat: 'Meat & Fish' },
+    { n: 'Back bacon', q: '200g, thick cut', price: 2.99, cat: 'Meat & Fish' },
+    { n: 'Baby potatoes', q: '600g, halved', price: 1.49, cat: 'Vegetables & Fruit' },
+    { n: 'Onions', q: '2, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Chicken stock', q: '600ml', price: 1.19, cat: 'Pantry & Dry' },
+    { n: 'Fresh parsley', q: 'handful, chopped', price: 0.75, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Brown sausages in a heavy pot over medium-high heat until golden. Remove. Brown bacon briefly in the same pot. Remove.',
+    'Layer onions and potatoes in the pot. Lay sausages and bacon on top.',
+    'Pour stock over everything — it should just cover. Season well with black pepper.',
+    'Bring to a simmer, cover and cook over low heat 45 minutes until potatoes are completely tender.',
+    'Scatter parsley over and serve in deep bowls with soda bread for mopping up the rich broth.'
+  ]
+},{
+  id: 59,
+  name: 'Baked Sea Bass',
+  emoji: '🐟',
+  photo: PHOTO('1665401015549-712c0dc5ef85'),
+  cuisine: 'Mediterranean',
+  time: '25 min',
+  serves: 2,
+  protein: 32,
+  carbs: 8,
+  fat: 12,
+  fibre: 3,
+  allergens: ['fish'],
+  incompatible: ['veg', 'vegan'],
+  ingredients: [
+    { n: 'Sea bass fillets', q: '2 × 180g', price: 7.49, cat: 'Meat & Fish' },
+    { n: 'Cherry tomatoes', q: '200g, halved', price: 1.29, cat: 'Vegetables & Fruit' },
+    { n: 'Capers', q: '1 tbsp', price: 1.29, cat: 'Pantry & Dry' },
+    { n: 'Olives', q: '60g, pitted', price: 1.19, cat: 'Pantry & Dry' },
+    { n: 'Lemon', q: '1, sliced', price: 0.40, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh herbs (parsley or basil)', q: 'handful', price: 0.79, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Preheat oven to 200°C. Scatter tomatoes, capers and olives in a roasting dish. Drizzle with olive oil and season.',
+    'Roast the tomatoes 8 minutes until softening and starting to burst.',
+    'Nestle sea bass fillets skin-side down among the tomatoes. Lay lemon slices on top of each fillet.',
+    'Roast 12 minutes until fish is just opaque and flakes easily at the thickest part.',
+    'Scatter fresh herbs over, drizzle with the roasting juices and serve with crusty bread or couscous.'
   ]
 }];
 
