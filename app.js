@@ -5,7 +5,8 @@ const {
   useState,
   useEffect,
   useLayoutEffect,
-  useRef
+  useRef,
+  useMemo
 } = React;
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
@@ -103,17 +104,22 @@ const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set()) => {
     !dislikedIds.has(r.id)
   );
   const pool = compatible.length >= 7 ? compatible : ALL_RECIPES;
-  const base = seed === 0 ? PLAN_A : PLAN_B;
-  const usedIds = new Set();
-  return base.map(meal => {
-    const hasConflict =
-      (meal.incompatible || []).includes(diet) ||
-      (meal.allergens || []).some(a => allergens.includes(a));
-    if (!hasConflict) { usedIds.add(meal.id); return meal; }
-    const replacement = compatible.find(r => !usedIds.has(r.id));
-    if (replacement) { usedIds.add(replacement.id); return replacement; }
-    return meal;
-  });
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const plan = [];
+  const cuisineCounts = {};
+  // Pass 1: max 2 of the same cuisine
+  for (const r of shuffled) {
+    if (plan.length >= 7) break;
+    const c = cuisineCounts[r.cuisine] || 0;
+    if (c < 2) { plan.push(r); cuisineCounts[r.cuisine] = c + 1; }
+  }
+  // Pass 2: fill any remaining slots if pool is too small for strict diversity
+  const usedIds = new Set(plan.map(r => r.id));
+  for (const r of shuffled) {
+    if (plan.length >= 7) break;
+    if (!usedIds.has(r.id)) { plan.push(r); usedIds.add(r.id); }
+  }
+  return plan;
 };
 
 // ─── Pantry staples (pre-excluded) ──────────────────────────────────────────────────
@@ -1017,24 +1023,60 @@ function AllSortedPrototype() {
     setPendingDiet(selectedDiet);
     setPendingAllergens([...allergens]);
   };
-  const computeSwapAlts = (baseMeal) => {
+  // Precompute swap alts once per plan/diet/disliked change — NOT per render.
+  // Algorithm mirrors production (#129, #213): one shared pool, cross-day uniqueness as strong
+  // preference, max 1 of any cuisine per carousel so every swipe feels genuinely different.
+  const swapAltsMap = useMemo(() => {
     const planIds = new Set(activePlan.map(m => m.id));
-    const maxS = maxSwaps;
-    const compatible = ALL_RECIPES.filter(r =>
-      r.id !== baseMeal.id &&
+    const shuffleFn = arr => [...arr].sort(() => Math.random() - 0.5);
+
+    // Single shared pool — excludes all primary meals, diet conflicts, allergens, disliked.
+    const basePool = shuffleFn(ALL_RECIPES.filter(r =>
       !planIds.has(r.id) &&
       !(r.incompatible || []).includes(selectedDiet) &&
       !(r.allergens || []).some(a => allergens.includes(a)) &&
       !dislikedSet.has(r.id)
-    );
-    const same = compatible.filter(r => r.cuisine === baseMeal.cuisine);
-    const other = compatible.filter(r => r.cuisine !== baseMeal.cuisine);
-    return [...same, ...other].slice(0, maxS);
-  };
+    ));
+
+    const allocatedIds = new Set(); // cross-day uniqueness tracking
+    const map = {};
+
+    activePlan.forEach(meal => {
+      const alts = [];
+      const cuisineInCarousel = {}; // max 1 of any cuisine among alts
+
+      // Pass 1: prefer unallocated recipes; max 1 of any cuisine per carousel.
+      for (const r of basePool) {
+        if (alts.length >= maxSwaps) break;
+        if (allocatedIds.has(r.id)) continue;
+        if ((cuisineInCarousel[r.cuisine] || 0) >= 1) continue;
+        alts.push(r);
+        cuisineInCarousel[r.cuisine] = (cuisineInCarousel[r.cuisine] || 0) + 1;
+      }
+
+      // Pass 2: graceful fallback — allow already-allocated if pool is tight.
+      if (alts.length < maxSwaps) {
+        const altIds = new Set(alts.map(r => r.id));
+        for (const r of basePool) {
+          if (alts.length >= maxSwaps) break;
+          if (altIds.has(r.id)) continue;
+          if ((cuisineInCarousel[r.cuisine] || 0) >= 1) continue;
+          alts.push(r);
+          cuisineInCarousel[r.cuisine] = (cuisineInCarousel[r.cuisine] || 0) + 1;
+        }
+      }
+
+      alts.forEach(r => allocatedIds.add(r.id));
+      map[meal.id] = alts;
+    });
+
+    return map;
+  }, [activePlan, dislikedSet, selectedDiet, allergens, maxSwaps]);
+
   const getMealAtDay = i => {
     const base = activePlan[mealOrder[i]];
     if (swapPos[i] > 0) {
-      const alts = computeSwapAlts(base);
+      const alts = swapAltsMap[base.id] || [];
       if (alts[swapPos[i] - 1]) return alts[swapPos[i] - 1];
     }
     return base;
@@ -1309,8 +1351,19 @@ function AllSortedPrototype() {
       );
       const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
       const newPlan = [...approvedMeals];
-      for (const r of shuffledPool) { if (newPlan.length >= 7) break; newPlan.push(r); }
-      const finalPlan = [...newPlan].sort(() => Math.random() - 0.5).slice(0, 7);
+      const cuisineCounts = {};
+      approvedMeals.forEach(m => { cuisineCounts[m.cuisine] = (cuisineCounts[m.cuisine] || 0) + 1; });
+      for (const r of shuffledPool) {
+        if (newPlan.length >= 7) break;
+        const c = cuisineCounts[r.cuisine] || 0;
+        if (c < 2) { newPlan.push(r); cuisineCounts[r.cuisine] = c + 1; }
+      }
+      const usedIds = new Set(newPlan.map(r => r.id));
+      for (const r of shuffledPool) {
+        if (newPlan.length >= 7) break;
+        if (!usedIds.has(r.id)) { newPlan.push(r); usedIds.add(r.id); }
+      }
+      const finalPlan = newPlan.slice(0, 7);
       setActivePlan(finalPlan);
       setOrder([0, 1, 2, 3, 4, 5, 6]);
       setSwapPos(Array(7).fill(0));
@@ -2208,7 +2261,7 @@ function AllSortedPrototype() {
     }, meals.map((meal, i) => {
       const pos = swapPos[i];
       const baseMeal = activePlan[mealOrder[i]];
-      const hasSwaps = baseMeal.swaps && baseMeal.swaps.length > 0;
+      const hasSwaps = !isFrozen;
       const isOff = !dayOn[i];
       const currentName = meal.name;
       const currentCuisine = meal.cuisine;
@@ -2265,7 +2318,7 @@ function AllSortedPrototype() {
         style: {
           display: 'flex',
           alignItems: 'center',
-          padding: '6px 10px 2px',
+          padding: '10px 10px 10px',
           gap: 7,
           flex: 1
         }
@@ -2508,15 +2561,20 @@ function AllSortedPrototype() {
         on: !isOff,
         onToggle: isFrozen ? undefined : () => toggleDay(i),
         disabled: isFrozen
-      }))), !isFrozen && hasSwaps ? /*#__PURE__*/React.createElement("div", {
+      }))), hasSwaps && /*#__PURE__*/React.createElement("div", {
         style: {
+          position: 'absolute',
+          bottom: 4,
+          left: 0,
+          right: 0,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           gap: 5,
-          padding: '3px 10px 5px',
+          padding: '0 10px',
           opacity: isOff ? 0.25 : 1,
-          transition: 'opacity 0.25s'
+          transition: 'opacity 0.25s',
+          pointerEvents: isOff ? 'none' : 'auto'
         }
       }, Array.from({
         length: maxSwaps + 1
@@ -2535,11 +2593,7 @@ function AllSortedPrototype() {
           transition: (dragSrcIdx !== null || landingIdx !== null) ? 'none' : 'all 0.2s',
           cursor: isOff ? 'default' : 'pointer'
         }
-      }))) : /*#__PURE__*/React.createElement("div", {
-        style: {
-          height: 8
-        }
-      }));
+      }))));
     })), isFrozen ? /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -4580,12 +4634,19 @@ function AllSortedPrototype() {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 52,
-        flexShrink: 0
+        flexShrink: 0,
+        position: 'relative'
       }
-    }, meal.photo ? /*#__PURE__*/React.createElement("img", {
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 52
+      }
+    }, meal.emoji), meal.photo && /*#__PURE__*/React.createElement("img", {
       src: meal.photo,
       alt: "",
       style: {
+        position: 'absolute',
+        inset: 0,
         width: '100%',
         height: '100%',
         objectFit: 'cover'
@@ -4593,11 +4654,7 @@ function AllSortedPrototype() {
       onError: e => {
         e.target.style.display = 'none';
       }
-    }) : /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 52
-      }
-    }, meal.emoji)), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement("div", {
       style: {
         padding: '12px 16px 0',
         flexShrink: 0,
