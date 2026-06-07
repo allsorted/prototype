@@ -97,13 +97,20 @@ const S = {
 };
 
 
-const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set()) => {
-  const compatible = ALL_RECIPES.filter(r =>
+const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set(), recentIds = new Set()) => {
+  // Diet & allergen safety is the one filter that must NEVER be relaxed —
+  // every tier below builds on top of it.
+  const dietSafe = r =>
     !((r.incompatible || []).includes(diet)) &&
-    !(r.allergens || []).some(a => allergens.includes(a)) &&
-    !dislikedIds.has(r.id)
-  );
-  const pool = compatible.length >= 7 ? compatible : ALL_RECIPES;
+    !(r.allergens || []).some(a => allergens.includes(a));
+
+  // Tier 1 (ideal): respects diet, allergens, dislikes AND recent no-repeat memory
+  const tier1 = ALL_RECIPES.filter(r => dietSafe(r) && !dislikedIds.has(r.id) && !recentIds.has(r.id));
+  // Tier 2 (graceful fallback): pool too small for the no-repeat window — relax that, keep dislikes out
+  const tier2 = ALL_RECIPES.filter(r => dietSafe(r) && !dislikedIds.has(r.id));
+  // Tier 3 (last resort): relax dislikes too — diet & allergen safety still guaranteed
+  const tier3 = ALL_RECIPES.filter(r => dietSafe(r));
+  const pool = tier1.length >= 7 ? tier1 : (tier2.length >= 7 ? tier2 : tier3);
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   const plan = [];
   const cuisineCounts = {};
@@ -914,6 +921,19 @@ function AllSortedPrototype() {
     catch { return new Set(); }
   });
   useEffect(() => { localStorage.setItem('as_disliked', JSON.stringify([...dislikedSet])); }, [dislikedSet]);
+  // No-repeat memory (mirrors production #213): only the 7 PRIMARY meals of a fresh
+  // weekly plan are remembered — swap alts are never logged. Stored as a queue of
+  // generations so the window rolls forward each fresh week / new plan.
+  const RECENT_MEMORY_GENERATIONS = 3; // remember the last 3 fresh-week plans (~21 of 60 recipes)
+  const [recentPrimaries, setRecentPrimaries] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('as_recent_primaries') || '[]'); }
+    catch { return []; }
+  });
+  useEffect(() => { localStorage.setItem('as_recent_primaries', JSON.stringify(recentPrimaries)); }, [recentPrimaries]);
+  const recentPrimarySet = useMemo(() => new Set(recentPrimaries.flat()), [recentPrimaries]);
+  const recordPrimaryGeneration = (ids) => {
+    setRecentPrimaries(prev => [...prev, ids].slice(-RECENT_MEMORY_GENERATIONS));
+  };
   const [weekStartDay, setWeekStartDay] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -1376,7 +1396,9 @@ function AllSortedPrototype() {
       go('generating');
     } else {
     const nextSeed = planVersion === 'A' ? 1 : 0;
-    setActivePlan(buildPlanForUser(selectedDiet, allergens, nextSeed, dislikedSet));
+    const freshPlan = buildPlanForUser(selectedDiet, allergens, nextSeed, dislikedSet, recentPrimarySet);
+    recordPrimaryGeneration(freshPlan.map(r => r.id));
+    setActivePlan(freshPlan);
     setPlanVersion(v => v === 'A' ? 'B' : 'A');
     setOrder([0, 1, 2, 3, 4, 5, 6]);
     setSwapPos(Array(7).fill(0));
@@ -2124,7 +2146,9 @@ function AllSortedPrototype() {
       if (gdpr) {
         setAllergens([...pendingAllergens]);
         setDiet(pendingDiet);
-        setActivePlan(buildPlanForUser(pendingDiet, pendingAllergens, planVersion === 'A' ? 0 : 1));
+        const firstPlan = buildPlanForUser(pendingDiet, pendingAllergens, planVersion === 'A' ? 0 : 1, new Set(), recentPrimarySet);
+        recordPrimaryGeneration(firstPlan.map(r => r.id));
+        setActivePlan(firstPlan);
         go('generating');
       }
     }
