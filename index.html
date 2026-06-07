@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -23,6 +23,34 @@
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#0D0D0D;overflow:hidden}
     #root{height:100%;display:flex;flex-direction:column}
+
+    /* On phones the app already fills the screen — no frame needed.
+       On wider viewports (desktop/tablet browsers), present it inside
+       a centered phone-shaped frame instead of stretching edge to edge.
+       No fake notch here on purpose — the app already shows its own
+       "All$orted" wordmark in its persistent header, and a cosmetic
+       notch would sit right on top of it and partially hide it. */
+    @media (min-width: 560px) {
+      body{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:radial-gradient(circle at 50% 32%, #1c1c1c 0%, #050505 75%);
+        overflow:auto;
+      }
+      #root{
+        width:360px;
+        height:min(100dvh - 48px, 880px);
+        max-height:calc(100dvh - 48px);
+        border-radius:42px;
+        overflow:hidden;
+        position:relative;
+        box-shadow:
+          0 0 0 8px #1a1a1a,
+          0 0 0 10px #2e2e2e,
+          0 30px 90px rgba(0,0,0,0.65);
+      }
+    }
   </style>
 </head>
 <body>
