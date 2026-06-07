@@ -618,7 +618,7 @@ const ScreenHeader = ({
   style: {
     color: C.accent
   }
-}, "$"), "orted")), badge ? /*#__PURE__*/React.createElement("div", {
+}, "$orted"))), badge ? /*#__PURE__*/React.createElement("div", {
   style: { position: 'absolute', left: 44, right: '65%', top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }
 }, badge) : null, /*#__PURE__*/React.createElement("div", {
   style: {
@@ -727,18 +727,29 @@ const SheetHandle = ({
     cursor: closeFn ? 'grab' : 'default',
     touchAction: 'none'
   },
-  onTouchStart: closeFn ? e => {
-    e.currentTarget.parentNode._sy = e.touches[0].clientY;
-  } : undefined,
-  onTouchMove: closeFn ? e => {
+  // Pointer Events (not Touch Events) — unify mouse, touch & pen behind one
+  // API so swipe-down-to-dismiss works identically on phones AND in a
+  // desktop browser (which has no touchstart/touchmove/touchend at all).
+  // setPointerCapture keeps the gesture tracking even if the cursor/finger
+  // drifts outside the handle's small hit area mid-drag.
+  onPointerDown: closeFn ? e => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     const s = e.currentTarget.parentNode;
-    const dy = Math.max(0, e.touches[0].clientY - (s._sy || 0));
+    s._sy = e.clientY;
+    s._dragging = true;
+  } : undefined,
+  onPointerMove: closeFn ? e => {
+    const s = e.currentTarget.parentNode;
+    if (!s._dragging) return;
+    const dy = Math.max(0, e.clientY - (s._sy || 0));
     s.style.transform = 'translateY(' + dy + 'px)';
     s.style.transition = 'none';
   } : undefined,
-  onTouchEnd: closeFn ? e => {
+  onPointerUp: closeFn ? e => {
     const s = e.currentTarget.parentNode;
-    const dy = Math.max(0, e.changedTouches[0].clientY - (s._sy || 0));
+    if (!s._dragging) return;
+    s._dragging = false;
+    const dy = Math.max(0, e.clientY - (s._sy || 0));
     if (dy > 80) {
       s.style.transform = 'translateY(100vh)';
       s.style.transition = 'transform 0.22s ease-in';
@@ -752,6 +763,13 @@ const SheetHandle = ({
       s.style.transition = 'transform 0.18s ease';
       setTimeout(() => { s.style.transform = ''; s.style.transition = ''; }, 200);
     }
+  } : undefined,
+  onPointerCancel: closeFn ? e => {
+    const s = e.currentTarget.parentNode;
+    s._dragging = false;
+    s.style.transform = 'translateY(0)';
+    s.style.transition = 'transform 0.18s ease';
+    setTimeout(() => { s.style.transform = ''; s.style.transition = ''; }, 200);
   } : undefined
 }, /*#__PURE__*/React.createElement("div", {
   style: {
@@ -1306,16 +1324,55 @@ function AllSortedPrototype() {
       }
     };
 
-    // Mouse fallbacks for desktop / DevTools simulation
+    // Mouse fallbacks for desktop browsers (no touch surface, so the touch
+    // handlers above never fire there). Mirrors onStart/onMove/onEnd in full —
+    // both the handle drag-to-reorder AND the horizontal swipe-to-swap —
+    // using mouse coordinates directly (no .touches[] wrapper needed).
     const onMouseStart = (e) => {
-      if (!e.target.closest('[data-drag-handle]')) return;
-      e.preventDefault();
       const card = e.target.closest('[data-card-idx]');
       if (!card) return;
-      startDrag(parseInt(card.dataset.cardIdx), e.clientY);
+      const idx = parseInt(card.dataset.cardIdx);
+      const handle = e.target.closest('[data-drag-handle]');
+      if (handle) {
+        e.preventDefault();
+        pendingDragRef.current = { idx, startX: e.clientX, startY: e.clientY };
+      }
+      swipeStartRef.current = { x: e.clientX, y: e.clientY, idx };
     };
-    const onMouseMove = (e) => { if (dragSrcIdxRef.current !== null) moveDrag(e.clientY); };
-    const onMouseEnd = () => endDrag();
+    const onMouseMove = (e) => {
+      if (pendingDragRef.current) {
+        const { idx, startX, startY } = pendingDragRef.current;
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        if (dy > dx && dy > 6) {
+          pendingDragRef.current = null;
+          swipeStartRef.current = null;
+          startDrag(idx, e.clientY);
+        } else if (dx > dy && dx > 6) {
+          pendingDragRef.current = null;
+        }
+        return;
+      }
+      if (dragSrcIdxRef.current !== null) moveDrag(e.clientY);
+    };
+    const onMouseEnd = (e) => {
+      pendingDragRef.current = null;
+      const wasDragging = dragSrcIdxRef.current !== null;
+      endDrag();
+      if (wasDragging) return;
+      if (!swipeStartRef.current) return;
+      if (isFrozenRef.current) return;
+      const { x, y, idx } = swipeStartRef.current;
+      swipeStartRef.current = null;
+      const dx = e.clientX - x;
+      const dy = e.clientY - y;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        const card = container.querySelector('[data-card-idx="' + idx + '"]');
+        if (!card || card.dataset.hasSwaps !== 'true') return;
+        if (dx < 0) swapNext(idx);
+        else swapPrev(idx);
+      }
+    };
 
     container.addEventListener('touchstart', onStart, { passive: false });
     container.addEventListener('touchmove', onMove, { passive: false });
@@ -2280,7 +2337,12 @@ function AllSortedPrototype() {
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
-        touchAction: 'none'
+        touchAction: 'none',
+        // Without this, mouse-dragging a card on desktop (swipe-to-swap /
+        // drag-to-reorder) highlights the recipe text underneath the cursor —
+        // looks broken. Touch devices suppress this natively; mouse doesn't.
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
       }
     }, meals.map((meal, i) => {
       const pos = swapPos[i];
@@ -4638,7 +4700,7 @@ function AllSortedPrototype() {
         bottom: 0,
         left: 0,
         right: 0,
-        maxHeight: '95%',
+        maxHeight: '85%',
         background: C.bgSec,
         borderRadius: '18px 18px 0 0',
         display: 'flex',
@@ -6672,11 +6734,19 @@ function AllSortedPrototype() {
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
-      minHeight: '100dvh',
+      minHeight: '100%',
       background: C.bg,
       display: 'flex',
       flexDirection: 'column',
-      fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif'
+      fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif',
+      // Safe-area insets — mirrors what SafeAreaView will do in the real RN app.
+      // Needed because the status bar is "black-translucent" (overlays content)
+      // and viewport-fit=cover is set, so without this the header wordmark and
+      // bottom buttons/sheets would render under the notch / home-indicator on
+      // real notched phones. env() falls back to 0px on devices without insets
+      // (incl. our desktop phone-frame), so this is invisible everywhere else.
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)'
     }
   }, /*#__PURE__*/React.createElement("style", null, "\n        * { box-sizing: border-box; }\n        ::-webkit-scrollbar { display: none; }\n        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }\n        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(7px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }\n        @keyframes toastIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }\n        @keyframes slideUp { from { transform:translateY(14px); opacity:0.5 } to { transform:translateY(0); opacity:1 } }\n        @keyframes slideDown { from { transform:translateY(0); opacity:1 } to { transform:translateY(14px); opacity:0 } }\n        @keyframes fadeOutBg { from { opacity:1 } to { opacity:0 } }\n        [data-closing='true'] .sheet-slide, [data-closing='true'] .sheet-done { animation: slideDown 0.28s cubic-bezier(0.32,0.72,0,1) both; }\n        [data-closing='true'] .backdrop-anim, [data-closing='true'] .backdrop-done { animation: fadeOutBg 0.22s ease both; }\n        .sheet-done { transform: translateY(0); }\n        .backdrop-done { opacity: 1; }\n        @keyframes fadeInBg { from { opacity:0 } to { opacity:1 } }\n        .sheet-slide { animation: slideUp 0.22s ease-out both; }\n        .backdrop-anim { animation: fadeInBg 0.2s ease both; }\n        input { font-family: inherit; }\n        input::placeholder { color: #5E5E5E; }\n      "), /*#__PURE__*/React.createElement("div", {
     style: {
