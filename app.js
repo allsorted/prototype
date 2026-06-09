@@ -407,6 +407,54 @@ const DIET_LABELS = {
   gf: 'Gluten-Free',
   balanced: 'Balanced'
 };
+
+// ── Per-ingredient conflict inference (prototype simulation of #215) ──────────
+// The real app will carry per-ingredient allergen + category tags in the recipe
+// data (EU allergen labelling already requires this at source). Here we infer
+// from the ingredient name so the recipe sheet can red-flag the offending lines.
+const ING_ALLERGEN_KW = {
+  gluten: ['flour', 'bread', 'breadcrumb', 'pasta', 'noodle', 'couscous', 'naan', 'pita', 'tortilla', 'barley', 'bulgur', 'cracker', 'pastry', 'soy sauce', 'wrap'],
+  milk: ['milk', 'cream', 'butter', 'cheese', 'yogurt', 'yoghurt', 'ghee', 'paneer', 'feta', 'mozzarella', 'parmesan', 'mascarpone'],
+  eggs: ['egg'],
+  fish: ['fish', 'salmon', 'cod', 'tuna', 'anchovy', 'haddock', 'mackerel', 'sardine'],
+  crustaceans: ['prawn', 'shrimp', 'crab', 'lobster', 'langoustine'],
+  molluscs: ['mussel', 'clam', 'squid', 'octopus', 'oyster', 'calamari', 'scallop'],
+  peanuts: ['peanut'],
+  treenuts: ['almond', 'cashew', 'walnut', 'pecan', 'pistachio', 'hazelnut', 'macadamia'],
+  soy: ['soy', 'soya', 'tofu', 'edamame', 'tempeh', 'miso'],
+  sesame: ['sesame', 'tahini'],
+  celery: ['celery', 'celeriac'],
+  mustard: ['mustard'],
+  sulphites: [],
+  lupin: ['lupin']
+};
+const MEAT_KW = ['chicken', 'beef', 'pork', 'lamb', 'bacon', 'ham', 'sausage', 'mince', 'steak', 'meat', 'gelatin', 'prosciutto', 'chorizo', 'pepperoni', 'turkey', 'duck', 'veal'];
+const SEAFOOD_KW = ['fish', 'salmon', 'cod', 'tuna', 'anchovy', 'haddock', 'mackerel', 'sardine', 'prawn', 'shrimp', 'crab', 'lobster', 'mussel', 'clam', 'squid', 'octopus', 'oyster', 'calamari', 'scallop'];
+const ANIMAL_KW = ['milk', 'cream', 'butter', 'cheese', 'yogurt', 'yoghurt', 'ghee', 'paneer', 'feta', 'mozzarella', 'parmesan', 'mascarpone', 'egg', 'honey'];
+const HICARB_KW = ['rice', 'pasta', 'bread', 'potato', 'flour', 'sugar', 'noodle', 'couscous', 'naan', 'tortilla', 'quinoa'];
+
+// Strip compounds that would otherwise trip a keyword (coconut milk isn't dairy,
+// eggplant isn't egg, butternut isn't butter, peanut butter isn't dairy).
+const normIngredient = name => (name || '').toLowerCase()
+  .replace(/eggplant/g, 'aubergine')
+  .replace(/butternut/g, 'b-squash')
+  .replace(/(coconut|almond|oat|soya?|cashew|rice|hemp) (milk|cream|yogurt|yoghurt)/g, '$1')
+  .replace(/(peanut|almond|cashew|nut|cocoa|seed|sunflower) butter/g, '$1');
+
+// True when this ingredient clashes with the user's active allergens or diet.
+const ingredientConflicts = (name, userAllergens, diet) => {
+  const n = normIngredient(name);
+  const has = kws => kws.some(k => n.includes(k));
+  for (const a of (userAllergens || [])) {
+    const kws = ING_ALLERGEN_KW[a];
+    if (kws && kws.length && has(kws)) return true;
+  }
+  if (diet === 'veg' && (has(MEAT_KW) || has(SEAFOOD_KW))) return true;
+  if (diet === 'vegan' && (has(MEAT_KW) || has(SEAFOOD_KW) || has(ANIMAL_KW))) return true;
+  if (diet === 'gf' && has(ING_ALLERGEN_KW.gluten)) return true;
+  if (diet === 'lowcarb' && has(HICARB_KW)) return true;
+  return false;
+};
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // Two-line brand lockup (mirrors prototype-logo.svg) inlined so the splash can
@@ -4644,12 +4692,12 @@ function AllSortedPrototype() {
     const mealIdx = activeRecipe.mealIdx;
     const fromSaved = activeRecipe.fromSaved;
 
-    // Conflict summary — same derivation as plan cards (allergen + diet)
-    const conflictIds = (meal.allergens || []).filter(a => allergens.includes(a));
-    const conflict = conflictIds.length > 0;
-    const conflictLabels = conflictIds.map(a => ALLERGENS.find(x => x.id === a)?.label).filter(Boolean);
-    const dietConflict = (meal.incompatible || []).includes(selectedDiet);
-    const hasConflict = conflict || dietConflict;
+    // Dish-level conflict (same as the card's red border + ! badge). Per-ingredient
+    // red-flagging is GATED on this: a compatible dish shows no red lines, even if a
+    // keyword would otherwise match (e.g. a low-carb-approved dish that has a little
+    // rice). Reds only appear when the dish itself conflicts with the user.
+    const dishConflict = (meal.allergens || []).some(a => allergens.includes(a))
+      || (meal.incompatible || []).includes(selectedDiet);
 
     // Cook time badge colour — same logic as plan cards
     const timeMin = parseInt(meal.time);
@@ -4802,23 +4850,7 @@ function AllSortedPrototype() {
         marginTop: 1,
         flexShrink: 0
       }
-    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), isPremium ? /*#__PURE__*/React.createElement("button", {onClick: () => toggleDisliked(mealIdx), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: dislikedSet.has(mealIdx)?1:0.4}}, '👎') : null), hasConflict && /*#__PURE__*/React.createElement("div", {
-      style: {
-        margin: '12px 16px 0',
-        background: '#EF535018',
-        border: '1px solid #EF535044',
-        borderRadius: 8,
-        padding: '8px 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        flexShrink: 0
-      }
-    }, conflict && /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 12, color: '#EF5350', fontWeight: 600 }
-    }, "⚠ Contains: " + conflictLabels.join(', ')), dietConflict && /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 12, color: '#EF5350', fontWeight: 600 }
-    }, "⚠ Not compatible with " + (DIET_LABELS[selectedDiet] || selectedDiet) + " diet")), /*#__PURE__*/React.createElement("div", {
+    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), isPremium ? /*#__PURE__*/React.createElement("button", {onClick: () => toggleDisliked(mealIdx), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: dislikedSet.has(mealIdx)?1:0.4}}, '👎') : null), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         padding: '12px 16px 0',
@@ -4863,7 +4895,7 @@ function AllSortedPrototype() {
         color: C.textSec,
         padding: '10px 0 6px'
       }
-    }, "Ingredients \xB7 1 serving"), (meal.ingredients || INGREDIENTS).map((ing, i) => /*#__PURE__*/React.createElement("div", {
+    }, "Ingredients \xB7 1 serving"), (meal.ingredients || INGREDIENTS).map((ing, i) => { const bad = dishConflict && ingredientConflicts(ing.n, allergens, selectedDiet); return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
         display: 'flex',
@@ -4875,16 +4907,17 @@ function AllSortedPrototype() {
     }, /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.body,
-        color: C.text
+        color: bad ? '#EF5350' : C.text,
+        fontWeight: bad ? 600 : 400
       }
     }, ing.n), /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.meta,
-        color: C.textSec,
+        color: bad ? '#EF5350' : C.textSec,
         marginLeft: 12,
         flexShrink: 0
       }
-    }, ing.q))), /*#__PURE__*/React.createElement("div", {
+    }, ing.q)); }), /*#__PURE__*/React.createElement("div", {
       style: {
         height: 16
       }
