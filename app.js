@@ -1731,8 +1731,19 @@ function AllSortedPrototype() {
 
   // 2. Onboarding slides
   const Onboarding = ({
-    slide
+    slide: initialSlide
   }) => {
+    const [slide, setSlide] = useState(initialSlide || 1);
+    const goNext = () => slide < 3 ? setSlide(slide + 1) : go('auth');
+    const goPrev = () => { if (slide > 1) setSlide(slide - 1); };
+    const swipeRef = React.useRef(null);
+    const onSwipeStart = x => { swipeRef.current = x; };
+    const onSwipeEnd = x => {
+      if (swipeRef.current === null) return;
+      const dx = x - swipeRef.current;
+      swipeRef.current = null;
+      if (Math.abs(dx) > 40) dx < 0 ? goNext() : goPrev();
+    };
     const data = [{
       emoji: '📅',
       title: 'Your week, planned.',
@@ -1746,16 +1757,35 @@ function AllSortedPrototype() {
       title: 'Free to start.\nPowerful to grow.',
       body: 'One free cart fill included — no card required.\nPremium unlocks 4 fills a month.\nFull recipe library too.'
     }];
-    const d = data[slide - 1];
     return /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         display: 'flex',
         flexDirection: 'column'
-      }
+      },
+      onTouchStart: e => onSwipeStart(e.touches[0].clientX),
+      onTouchEnd: e => onSwipeEnd(e.changedTouches[0].clientX),
+      onMouseDown: e => onSwipeStart(e.clientX),
+      onMouseUp: e => onSwipeEnd(e.clientX)
     }, /*#__PURE__*/React.createElement(ScreenHeader, null), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
+        display: 'flex',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        width: '300%',
+        flexShrink: 0,
+        transform: "translateX(-".concat((slide - 1) * (100 / 3), "%)"),
+        transition: 'transform 0.3s ease'
+      }
+    }, data.map((d, idx) => /*#__PURE__*/React.createElement("div", {
+      key: idx,
+      style: {
+        width: '33.333%',
+        flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -1786,7 +1816,7 @@ function AllSortedPrototype() {
         lineHeight: 1.8,
         whiteSpace: 'pre-line'
       }
-    }, d.body)), /*#__PURE__*/React.createElement("div", {
+    }, d.body))))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         justifyContent: 'center',
@@ -1804,7 +1834,7 @@ function AllSortedPrototype() {
       }
     }))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
       label: slide === 3 ? 'Get Started' : 'Next',
-      onPress: () => go(slide < 3 ? "onboarding".concat(slide + 1) : 'auth')
+      onPress: goNext
     })));
   };
 
