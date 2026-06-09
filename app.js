@@ -608,17 +608,11 @@ const ScreenHeader = ({
     justifyContent: 'center',
     pointerEvents: 'none'
   }
-}, /*#__PURE__*/React.createElement("span", {
-  style: {
-    ...T.logo,
-    color: C.text,
-    letterSpacing: -0.3
-  }
-}, "All", /*#__PURE__*/React.createElement("span", {
-  style: {
-    color: C.accent
-  }
-}, "$orted"))), badge ? /*#__PURE__*/React.createElement("div", {
+}, /*#__PURE__*/React.createElement("img", {
+  src: "header-logo.png",
+  alt: "AllSorted",
+  style: { height: 22, width: 'auto', objectFit: 'contain' }
+})), badge ? /*#__PURE__*/React.createElement("div", {
   style: { position: 'absolute', left: 44, right: '65%', top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }
 }, badge) : null, /*#__PURE__*/React.createElement("div", {
   style: {
