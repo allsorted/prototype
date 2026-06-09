@@ -97,6 +97,15 @@ const S = {
 };
 
 
+// Safe placeholder for the degenerate case where NO recipe survives the user's
+// filters (e.g. every allergen ticked). Keeps the plan renderable instead of
+// crashing on an undefined day. Carries every field the card/sheet read.
+const FALLBACK_MEAL = {
+  id: -1, name: 'No matching recipe', cuisine: '', time: '0', emoji: '🍽️',
+  photo: '', ingredients: [], steps: [], allergens: [], incompatible: [],
+  protein: 0, carbs: 0, fat: 0, fibre: 0
+};
+
 const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set(), recentIds = new Set()) => {
   // Diet & allergen safety is the one filter that must NEVER be relaxed —
   // every tier below builds on top of it.
@@ -126,7 +135,14 @@ const buildPlanForUser = (diet, allergens, seed, dislikedIds = new Set(), recent
     if (plan.length >= 7) break;
     if (!usedIds.has(r.id)) { plan.push(r); usedIds.add(r.id); }
   }
-  return plan;
+  // Pass 3: a restrictive diet + allergen combo can leave fewer than 7 safe
+  // recipes (e.g. vegan + gluten + milk). Loop the safe pool — repeats allowed —
+  // so the week is ALWAYS full. Diet/allergen safety is already guaranteed by
+  // `pool`, so repeating never introduces an unsafe meal. Prevents undefined days.
+  for (let k = 0; plan.length < 7 && shuffled.length > 0; k++) {
+    plan.push(shuffled[k % shuffled.length]);
+  }
+  return plan.slice(0, 7);
 };
 
 // ─── Pantry staples (pre-excluded) ──────────────────────────────────────────────────
@@ -1207,6 +1223,7 @@ function AllSortedPrototype() {
 
   const getMealAtDay = i => {
     const base = activePlan[mealOrder[i]];
+    if (!base) return FALLBACK_MEAL;
     if (swapPos[i] > 0) {
       const alts = swapAltsMap[base.id] || [];
       if (alts[swapPos[i] - 1]) return alts[swapPos[i] - 1];
