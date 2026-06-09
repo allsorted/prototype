@@ -1309,10 +1309,9 @@ function AllSortedPrototype() {
       const dx = e.changedTouches[0].clientX - x;
       const dy = e.changedTouches[0].clientY - y;
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        const pos = swapPosRef.current[idx];
         const card = container.querySelector('[data-card-idx="' + idx + '"]');
         if (!card || card.dataset.hasSwaps !== 'true') return;
-        const maxS = maxSwaps;
+        if (!dayOn[idx]) return;
         if (dx < 0) swapNext(idx);
         else swapPrev(idx);
       }
@@ -1363,6 +1362,7 @@ function AllSortedPrototype() {
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
         const card = container.querySelector('[data-card-idx="' + idx + '"]');
         if (!card || card.dataset.hasSwaps !== 'true') return;
+        if (!dayOn[idx]) return;
         if (dx < 0) swapNext(idx);
         else swapPrev(idx);
       }
@@ -1385,7 +1385,7 @@ function AllSortedPrototype() {
   // screen as dep: planCardsRef.current is null at render-time (before commit sets it),
   // so using it as dep means the effect never re-runs. screen changes trigger re-render
   // after which refs are committed, so planCardsRef.current is set when effect runs.
-  }, [screen, isPremium]);
+  }, [screen, isPremium, dayOn]);
 
   // Landing animation — runs after React commits the post-drop state (all cards at transform:0, transition:none).
   // WAAPI animates the dest card from where the user released (landingOffsetRef) to 0, starting with
@@ -2542,75 +2542,7 @@ function AllSortedPrototype() {
           textOverflow: 'ellipsis',
           lineHeight: 1.2
         }
-      }, currentName), conflict && /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          overflow: 'hidden',
-          flexShrink: 0
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          flexShrink: 1
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#EF535088',
-          fontWeight: 700,
-          fontSize: 10,
-          letterSpacing: 0.8,
-          textTransform: 'uppercase'
-        }
-      }, "Contains: "), /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#EF5350',
-          fontWeight: 600
-        }
-      }, conflictLabels.slice(0, 3).join(', '))), conflictLabels.length > 3 && /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 10,
-          fontWeight: 700,
-          color: '#EF5350',
-          background: '#EF535022',
-          borderRadius: 4,
-          padding: '1px 4px',
-          flexShrink: 0
-        }
-      }, "+", conflictLabels.length - 3)), dietConflict && !conflict && /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          overflow: 'hidden',
-          flexShrink: 0
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          flexShrink: 1
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#EF535088',
-          fontWeight: 700,
-          fontSize: 10,
-          letterSpacing: 0.8,
-          textTransform: 'uppercase'
-        }
-      }, "Diet: "), /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#EF5350',
-          fontWeight: 600
-        }
-      }, "Not ", DIET_LABELS[selectedDiet])))), /*#__PURE__*/React.createElement("div", {
+      }, currentName)), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           alignItems: 'center',
@@ -4642,6 +4574,13 @@ function AllSortedPrototype() {
     const mealIdx = activeRecipe.mealIdx;
     const fromSaved = activeRecipe.fromSaved;
 
+    // Conflict summary — same derivation as plan cards (allergen + diet)
+    const conflictIds = (meal.allergens || []).filter(a => allergens.includes(a));
+    const conflict = conflictIds.length > 0;
+    const conflictLabels = conflictIds.map(a => ALLERGENS.find(x => x.id === a)?.label).filter(Boolean);
+    const dietConflict = (meal.incompatible || []).includes(selectedDiet);
+    const hasConflict = conflict || dietConflict;
+
     // Cook time badge colour — same logic as plan cards
     const timeMin = parseInt(meal.time);
     const tc = timeColor(meal.time);
@@ -4793,7 +4732,23 @@ function AllSortedPrototype() {
         marginTop: 1,
         flexShrink: 0
       }
-    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), isPremium ? /*#__PURE__*/React.createElement("button", {onClick: () => toggleDisliked(mealIdx), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: dislikedSet.has(mealIdx)?1:0.4}}, '👎') : null), /*#__PURE__*/React.createElement("div", {
+    }, savedSet.has(mealIdx) ? '❤️' : '🤍'), isPremium ? /*#__PURE__*/React.createElement("button", {onClick: () => toggleDisliked(mealIdx), style: {background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 0', marginTop: 1, flexShrink: 0, opacity: dislikedSet.has(mealIdx)?1:0.4}}, '👎') : null), hasConflict && /*#__PURE__*/React.createElement("div", {
+      style: {
+        margin: '12px 16px 0',
+        background: '#EF535018',
+        border: '1px solid #EF535044',
+        borderRadius: 8,
+        padding: '8px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        flexShrink: 0
+      }
+    }, conflict && /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12, color: '#EF5350', fontWeight: 600 }
+    }, "⚠ Contains: " + conflictLabels.join(', ')), dietConflict && /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 12, color: '#EF5350', fontWeight: 600 }
+    }, "⚠ Not compatible with " + (DIET_LABELS[selectedDiet] || selectedDiet) + " diet")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         padding: '12px 16px 0',
@@ -5665,11 +5620,6 @@ function AllSortedPrototype() {
             return next;
           });
         }
-        if (!dayOn[i]) setDayOn(p => {
-          const n = [...p];
-          n[i] = true;
-          return n;
-        });
         setShowDayPicker(false);
         showToast("Added to ".concat(cardLabel(i)));
       } else {
@@ -5797,13 +5747,13 @@ function AllSortedPrototype() {
       const shownName = meal.name;
       return /*#__PURE__*/React.createElement("div", {
         key: i,
-        onClick: () => pickDay(i),
+        onClick: isOff ? undefined : () => pickDay(i),
         style: {
           display: 'flex',
           alignItems: 'center',
           padding: '13px 20px',
           borderBottom: "1px solid ".concat(C.border),
-          cursor: 'pointer',
+          cursor: isOff ? 'default' : 'pointer',
           gap: 10
         }
       }, /*#__PURE__*/React.createElement("span", {
@@ -5826,13 +5776,7 @@ function AllSortedPrototype() {
           whiteSpace: 'nowrap',
           fontStyle: isOff ? 'italic' : 'normal'
         }
-      }, isOff ? 'Day off' : shownName), isOff && isUse && /*#__PURE__*/React.createElement("span", {
-        style: {
-          ...T.hint,
-          color: C.accent,
-          flexShrink: 0
-        }
-      }, "+ enable"), /*#__PURE__*/React.createElement("span", {
+      }, isOff ? 'Day off' : shownName), !isOff && /*#__PURE__*/React.createElement("span", {
         style: {
           color: C.textHint,
           fontSize: 18,
