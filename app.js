@@ -4676,24 +4676,24 @@ function AllSortedPrototype() {
   /*#__PURE__*/React.createElement("div", {
     style: { padding: "0 ".concat(S.frame, "px"), display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }
   }, [{
-    emoji: '\uD83D\uDED2', t: '4 cart fills per month', accent: C.accent
+    emoji: '\uD83D\uDED2', t: '4 fills a month', accent: C.accent
   }, {
-    emoji: '\uD83D\uDD04', t: '3 regens per week', accent: C.accentSoft
+    emoji: '\uD83D\uDD13', t: 'Up to 5 swaps a meal', accent: '#80DEEA'
   }, {
-    emoji: '\uD83D\uDD13', t: '6 swaps per meal', accent: '#80DEEA'
+    emoji: '\uD83D\uDD04', t: '3 regens a week', accent: C.accentSoft
   }, {
-    emoji: '\uD83C\uDF7D\uFE0F', t: 'More recipes', accent: '#EF9A9A'
-  }, {
-    emoji: '\u2728', t: 'AI insight', accent: '#81D4FA'
+    emoji: '\uD83C\uDF7D\uFE0F', t: '150 recipes', accent: '#EF9A9A'
   }, {
     emoji: '\uD83D\uDC4E', t: 'Dislike & hide', accent: '#CE93D8'
+  }, {
+    emoji: '\u2728', t: 'AI insight', accent: '#81D4FA'
   }].map(f => /*#__PURE__*/React.createElement("div", {
     key: f.t,
     style: {
       background: f.accent + '22',
-      borderRadius: 14, padding: '14px 10px',
+      borderRadius: 14, padding: '14px 8px',
       border: "1px solid ".concat(f.accent, "66"),
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center'
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 96, textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 26 } }, f.emoji),
   /*#__PURE__*/React.createElement("div", { style: { ...T.meta, color: C.text, fontWeight: 600, lineHeight: 1.35 } }, f.t)))),
