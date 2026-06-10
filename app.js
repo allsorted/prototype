@@ -2379,7 +2379,10 @@ function AllSortedPrototype() {
         background: color + '28',
         color,
         borderRadius: 4,
-        padding: '2px 6px',
+        padding: '0 6px',
+        height: 18,
+        display: 'inline-block',
+        lineHeight: '18px',
         fontSize: 10,
         fontWeight: 600,
         letterSpacing: 0.2,
@@ -2673,7 +2676,7 @@ function AllSortedPrototype() {
           flexShrink: 0,
           whiteSpace: 'nowrap'
         }
-      }, isFrozen ? null : cardLabel(i)), badge('⏱ ' + parseInt(meal.time), tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
+      }, isFrozen ? null : cardLabel(i)), badge(parseInt(meal.time) + ' min', tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
         style: {
           ...T.bodyMed,
           color: isOff ? C.textSec : C.text,
@@ -4054,7 +4057,7 @@ function AllSortedPrototype() {
           fontWeight: 700,
           flexShrink: 0
         }
-      }, "\u23F1 " + parseInt(r.time)), /*#__PURE__*/React.createElement("span", {
+      }, parseInt(r.time) + " min"), /*#__PURE__*/React.createElement("span", {
         style: {
           background: (CUISINE_COLOR[r.cuisine] || C.textSec) + '28',
           color: CUISINE_COLOR[r.cuisine] || C.textSec,
@@ -4718,8 +4721,18 @@ function AllSortedPrototype() {
     // red-flagging is GATED on this: a compatible dish shows no red lines, even if a
     // keyword would otherwise match (e.g. a low-carb-approved dish that has a little
     // rice). Reds only appear when the dish itself conflicts with the user.
-    const dishConflict = (meal.allergens || []).some(a => allergens.includes(a))
-      || (meal.incompatible || []).includes(selectedDiet);
+    const allergenConflict = (meal.allergens || []).some(a => allergens.includes(a));
+    const dietConflict = (meal.incompatible || []).includes(selectedDiet);
+    const dishConflict = allergenConflict || dietConflict;
+    // Header badge text. Allergen stays generic ("Allergen") so it scales to any
+    // number of allergens — the red ingredient lines name the specifics. Diet uses a
+    // short label. Both → combined.
+    const SHORT_DIET = { veg: 'Veg', vegan: 'Vegan', lowcarb: 'Low-Carb', gf: 'GF', protein: 'High-Protein', balanced: 'Balanced' };
+    const dietShort = SHORT_DIET[selectedDiet] || selectedDiet;
+    const conflictLabel = allergenConflict && dietConflict ? 'Allergen & Not ' + dietShort
+      : allergenConflict ? 'Allergen'
+      : dietConflict ? 'Not ' + dietShort
+      : null;
 
     // Cook time badge colour — same logic as plan cards
     const timeMin = parseInt(meal.time);
@@ -4845,22 +4858,44 @@ function AllSortedPrototype() {
         background: tc + '28',
         color: tc,
         borderRadius: 4,
-        padding: '2px 8px',
+        padding: '0 8px',
+        height: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        lineHeight: 1,
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: 0.2
       }
-    }, "\u23F1 ", meal.time), /*#__PURE__*/React.createElement("span", {
+    }, parseInt(meal.time) + " min"), /*#__PURE__*/React.createElement("span", {
       style: {
         background: (CUISINE_COLOR[meal.cuisine] || C.textSec) + '28',
         color: CUISINE_COLOR[meal.cuisine] || C.textSec,
         borderRadius: 4,
-        padding: '2px 8px',
+        padding: '0 8px',
+        height: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        lineHeight: 1,
         fontSize: 11,
         fontWeight: 600,
         letterSpacing: 0.2
       }
-    }, meal.cuisine))), /*#__PURE__*/React.createElement("button", {
+    }, meal.cuisine), conflictLabel && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: '#EF535022',
+        color: '#EF5350',
+        borderRadius: 4,
+        padding: '0 8px',
+        height: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        lineHeight: 1,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.2
+      }
+    }, conflictLabel))), /*#__PURE__*/React.createElement("button", {
       onClick: () => toggleSaved(mealIdx),
       style: {
         background: 'none',
@@ -5499,7 +5534,7 @@ function AllSortedPrototype() {
     const quickMeals = sourceMeals.filter(m => parseInt(m.time || '0') <= 25).map(m => m.name.split(' ')[0]);
     const bigMeal = sourceMeals.length ? sourceMeals.reduce((a, b) => parseInt(a.time || '0') > parseInt(b.time || '0') ? a : b) : null;
     const hasStew = sourceMeals.some(m => m.name.includes('Stew') || m.name.includes('Pie'));
-    const chips = [avgProtein > 0 && "\uD83E\uDD69 ~".concat(avgProtein, "g protein"), cuisines.length > 0 && "\uD83C\uDF0D ".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), avgTime > 0 && "\u23F1 ~".concat(avgTime, " min")].filter(Boolean);
+    const chips = [avgProtein > 0 && "~".concat(avgProtein, "g protein"), cuisines.length > 0 && "".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), avgTime > 0 && "~".concat(avgTime, " min")].filter(Boolean);
 
     // Tips: from past week data if history mode, otherwise derived from current meals
     const tips = historyInsightWeek?.tips || [bigMeal && parseInt(bigMeal.time || '0') >= 55 ? {
@@ -6486,7 +6521,10 @@ function AllSortedPrototype() {
         background: color + '28',
         color,
         borderRadius: 4,
-        padding: '2px 6px',
+        padding: '0 6px',
+        height: 18,
+        display: 'inline-block',
+        lineHeight: '18px',
         fontSize: 10,
         fontWeight: 600,
         letterSpacing: 0.2,
@@ -6691,7 +6729,7 @@ function AllSortedPrototype() {
           flexShrink: 0,
           whiteSpace: 'nowrap'
         }
-      }, hCardLabel(i)), meal.time && badge('⏱ ' + parseInt(meal.time), tc), meal.cuisine && badge(meal.cuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
+      }, hCardLabel(i)), meal.time && badge(parseInt(meal.time) + ' min', tc), meal.cuisine && badge(meal.cuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
         style: {
           ...T.bodyMed,
           color: C.text,
@@ -6759,7 +6797,7 @@ function AllSortedPrototype() {
           /*#__PURE__*/React.createElement("div", { style: { padding: '9px 10px 10px' } },
             /*#__PURE__*/React.createElement("div", { style: { ...T.bodyMed, color: C.text, lineHeight: 1.3, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, r.name),
             /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' } },
-              /*#__PURE__*/React.createElement("span", { style: { background: tc2(r.time) + '28', color: tc2(r.time), borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 700, flexShrink: 0 } }, '\u23F1 ' + parseInt(r.time)),
+              /*#__PURE__*/React.createElement("span", { style: { background: tc2(r.time) + '28', color: tc2(r.time), borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 700, flexShrink: 0 } }, parseInt(r.time) + ' min'),
               /*#__PURE__*/React.createElement("span", { style: { background: (CUISINE_COLOR[r.cuisine] || C.textSec) + '28', color: CUISINE_COLOR[r.cuisine] || C.textSec, borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, r.cuisine))));
         }))))
   };
