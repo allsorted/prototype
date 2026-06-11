@@ -28,8 +28,12 @@ const C = {
   protein: '#4CAF50',
   carbs: '#FFD740',
   fat: '#FF9800',
-  fibre: '#42A5F5'
+  fibre: '#42A5F5',
+  gold: '#E0B33A'
 };
+
+// Gold SVG crown — premium emblem, perches centered on the avatar circle (never an emoji — #227)
+const GOLD_CROWN_SVG = '<svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"><path d="M2 11.2 L0.9 3.6 L6 6.6 L10 1 L14 6.6 L19.1 3.6 L18 11.2 Z" fill="#E0B33A" stroke="#9A7415" stroke-width="0.6" stroke-linejoin="round"/><rect x="2" y="10.6" width="16" height="2.2" rx="0.6" fill="#E0B33A" stroke="#9A7415" stroke-width="0.5"/></svg>';
 
 // ─── Typography scale ──────────────────────────────────────────────────────────
 const T = {
@@ -1097,6 +1101,8 @@ function AllSortedPrototype() {
   const [showRecipe, setShowRecipe] = useState(false);
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [recipeTab, setRecipeTab] = useState('ingredients');
+  const [macroP, setMacroP] = useState(0); // 0→1 progress for the synced macro reveal (grams + % + bar + kcal). #229
+  const macroAnimRef = React.useRef(false);
   const [showStore, setShowStore] = useState(false);
   const [showPortions, setShowPortions] = useState(false);
   const [showNewWeek, setShowNewWeek] = useState(false);
@@ -1290,6 +1296,20 @@ function AllSortedPrototype() {
   };
   useEffect(() => { trackSheetOpen('savedfilters', showSavedFilters); }, [showSavedFilters]);
   useEffect(() => { trackSheetOpen('recipe', showRecipe && !!activeRecipe); }, [showRecipe, activeRecipe]);
+  // Macro reveal: grams, %, bar fill and kcal all count up 0→value in sync, once per sheet-open on first Macros view.
+  // No re-trigger when toggling tabs inside one open sheet; re-arms on every fresh open. Reduced-motion → instant. #229
+  useEffect(() => { macroAnimRef.current = false; setMacroP(0); }, [activeRecipe, showRecipe]);
+  useEffect(() => {
+    if (!(showRecipe && recipeTab === 'macros')) return;
+    if (macroAnimRef.current) { setMacroP(1); return; }
+    macroAnimRef.current = true;
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { setMacroP(1); return; }
+    let raf, start = null;
+    const step = t => { if (start === null) start = t; const e = Math.min((t - start) / 850, 1); setMacroP(1 - Math.pow(1 - e, 4)); if (e < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [showRecipe, recipeTab]);
   useEffect(() => { trackSheetOpen('store', showStore); }, [showStore]);
   useEffect(() => { trackSheetOpen('portions', showPortions); }, [showPortions]);
   useEffect(() => { trackSheetOpen('newweek', showNewWeek); }, [showNewWeek]);
@@ -2128,7 +2148,7 @@ function AllSortedPrototype() {
       onClick: () => setPendingDiet(d.id),
       style: {
         height: 88,
-        background: pendingDiet === d.id ? C.accentMuted : C.bgSec,
+        background: pendingDiet === d.id ? C.accent + '1F' : C.bgSec,
         border: "2px solid ".concat(pendingDiet === d.id ? C.accent : C.border),
         borderRadius: 14,
         padding: '0 10px',
@@ -2222,7 +2242,7 @@ function AllSortedPrototype() {
       onClick: () => setPendingAllergens(p => p.includes(a.id) ? p.filter(x => x !== a.id) : [...p, a.id]),
       style: {
         height: 60,
-        background: on ? C.accentMuted : C.bgEl,
+        background: on ? C.accent + '1F' : C.bgEl,
         border: "1.5px solid ".concat(on ? C.accent : C.border),
         borderRadius: 10,
         cursor: 'pointer',
@@ -2281,7 +2301,7 @@ function AllSortedPrototype() {
   }, "Withdraw consent")) : /*#__PURE__*/React.createElement("div", {
     onClick: () => setGdpr(g => !g),
     style: {
-      background: gdpr ? C.accentMuted : C.bgSec,
+      background: gdpr ? C.accent + '1F' : C.bgSec,
       border: "1.5px solid ".concat(gdpr ? C.accent : C.border),
       borderRadius: 10,
       padding: '11px 14px',
@@ -2431,11 +2451,11 @@ function AllSortedPrototype() {
         }, "\ud83d\udd04"),
         badge: isFrozen
           ? /*#__PURE__*/React.createElement("span", {
-              style: { background: 'transparent', border: "1px solid ".concat(C.accent), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }
+              style: { background: 'transparent', border: "1px solid ".concat(C.accent), borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }
             }, monthLabel)
           : /*#__PURE__*/React.createElement("button", {
               onClick: () => { setDpMode('weekstart'); setShowDayPicker(true); },
-              style: { background: 'transparent', border: "1px solid ".concat(C.border), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: C.textSec, whiteSpace: 'nowrap', cursor: 'pointer' }
+              style: { background: 'transparent', border: "1px solid ".concat(C.border), borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 600, color: C.textSec, whiteSpace: 'nowrap', cursor: 'pointer' }
             }, monthLabel),
         right: /*#__PURE__*/React.createElement("div", {
           style: {
@@ -2917,18 +2937,7 @@ function AllSortedPrototype() {
           lineHeight: 1
         }
       }, "\u2039"),
-      badge: /*#__PURE__*/React.createElement("span", {
-        style: {
-          background: 'transparent',
-          border: "1px solid ".concat(fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.border),
-          borderRadius: 20,
-          padding: '2px 8px',
-          fontSize: 11,
-          fontWeight: 600,
-          color: fillUsed >= maxFills ? C.error : fillUsed >= maxFills - 1 && maxFills > 1 ? C.warning : C.textSec,
-          whiteSpace: 'nowrap'
-        }
-      }, fillUsed, "/", maxFills, " fills"),
+      badge: null,
       right: store ? /*#__PURE__*/React.createElement("button", {
         onClick: cartFilled || isFrozen ? undefined : () => {
           setPendingStore(store);
@@ -3189,7 +3198,7 @@ function AllSortedPrototype() {
         color: C.textSec,
         lineHeight: 1.5
       }
-    }, "Filling your cart locks this week's plan.")), /*#__PURE__*/React.createElement("div", {
+    }, isPremium ? "Uses one fill and locks this week's plan." : "Uses your free fill and locks this week's plan.")), /*#__PURE__*/React.createElement("div", {
       style: {
         borderTop: "1px solid ".concat(C.border),
         display: 'flex'
@@ -3292,7 +3301,7 @@ function AllSortedPrototype() {
 
   // 10. Cart Ready — Stage 2 (simplified, always perfect fill)
   const CartReady = () => {
-    const fillsText = isPremium ? "".concat(fillUsed, " of 4 fills used this month") : 'Lifetime fill used';
+    const fillsText = isPremium ? "".concat(fillUsed, " of ").concat(maxFills, " fills used this month") : "".concat(fillUsed, " of ").concat(maxFills, " free fill used");
     const backBtn = /*#__PURE__*/React.createElement("button", {
       onClick: () => { screenStack.current = []; go('plan', { back: true }); },
       style: {
@@ -3328,8 +3337,9 @@ function AllSortedPrototype() {
         width: 72,
         height: 72,
         borderRadius: '50%',
-        background: C.accentMuted,
+        background: C.accent + '1F',
         border: "3px solid ".concat(C.accent),
+        color: C.accent,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -3670,8 +3680,9 @@ function AllSortedPrototype() {
         width: 72,
         height: 72,
         borderRadius: '50%',
-        background: C.accentMuted,
+        background: C.accent + '1F',
         border: "3px solid ".concat(C.accent),
+        color: C.accent,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -4208,8 +4219,8 @@ function AllSortedPrototype() {
       width: 52,
       height: 52,
       borderRadius: '50%',
-      background: C.accentMuted,
-      border: "2px solid ".concat(C.accent),
+      background: C.bgEl,
+      border: "1.5px solid ".concat(C.border),
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -4220,18 +4231,19 @@ function AllSortedPrototype() {
     style: {
       fontSize: 18,
       fontWeight: 800,
-      color: C.accent,
+      color: C.textSec,
       letterSpacing: -0.5
     }
   }, "MR"), isPremium && /*#__PURE__*/React.createElement("span", {
     style: {
       position: 'absolute',
-      top: -9,
-      right: -5,
-      fontSize: 15,
-      lineHeight: 1
-    }
-  }, "\uD83D\uDC51")), /*#__PURE__*/React.createElement("div", {
+      top: -11,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      lineHeight: 0
+    },
+    dangerouslySetInnerHTML: { __html: GOLD_CROWN_SVG }
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 0
@@ -4250,15 +4262,15 @@ function AllSortedPrototype() {
   }, "mike@allsorted.ie")), /*#__PURE__*/React.createElement("span", {
     style: {
       background: 'transparent',
-      color: isPremium ? C.accent : C.textSec,
-      border: "1px solid ".concat(isPremium ? C.accent : C.border),
+      color: isPremium ? C.gold : C.textSec,
+      border: "1px solid ".concat(isPremium ? C.gold : C.border),
       borderRadius: 20,
       padding: '4px 10px',
       ...T.hint,
       fontWeight: 600,
       flexShrink: 0
     }
-  }, isPremium ? '⭐ Premium' : 'Free')), isPremium ? /*#__PURE__*/React.createElement("div", {
+  }, isPremium ? 'Premium' : 'Free')), isPremium ? /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.bgSec,
       border: "1px solid ".concat(C.border),
@@ -5003,15 +5015,17 @@ function AllSortedPrototype() {
         width: 24,
         height: 24,
         borderRadius: '50%',
-        background: C.accentMuted,
-        color: C.accentSoft,
+        background: C.bgEl,
+        border: "1px solid ".concat(C.border),
+        boxSizing: 'border-box',
+        color: C.textSec,
         ...T.hint,
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-        marginTop: 2
+        marginTop: 0
       }
     }, i + 1), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -5043,7 +5057,7 @@ function AllSortedPrototype() {
         gap: 8,
         marginBottom: 10
       }
-    }, macros.map(m => /*#__PURE__*/React.createElement("div", {
+    }, macros.map((m, mi) => /*#__PURE__*/React.createElement("div", {
       key: m.label,
       style: {
         background: C.bgEl,
@@ -5064,7 +5078,7 @@ function AllSortedPrototype() {
         color: C.text,
         lineHeight: 1
       }
-    }, m.value, /*#__PURE__*/React.createElement("span", {
+    }, Math.round(m.value * macroP), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         fontWeight: 400,
@@ -5084,7 +5098,7 @@ function AllSortedPrototype() {
         color: C.textHint,
         lineHeight: 1
       }
-    }, Math.round(m.value / maxMacro * 100), "%")), /*#__PURE__*/React.createElement("div", {
+    }, Math.round(m.value / maxMacro * 100 * macroP), "%")), /*#__PURE__*/React.createElement("div", {
       style: {
         height: 3,
         background: C.bgSec,
@@ -5095,10 +5109,11 @@ function AllSortedPrototype() {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         height: '100%',
-        width: "".concat(Math.round(m.value / maxMacro * 100), "%"),
+        width: "".concat(m.value / maxMacro * 100, "%"),
+        transform: "scaleX(".concat(macroP, ")"),
+        transformOrigin: 'left',
         background: m.color,
-        borderRadius: 2,
-        transition: 'width 0.3s'
+        borderRadius: 2
       }
     }))))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -5125,7 +5140,7 @@ function AllSortedPrototype() {
         ...T.heading,
         color: C.accent
       }
-    }, kcal, /*#__PURE__*/React.createElement("span", {
+    }, Math.round(kcal * macroP), /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.meta,
         color: C.textSec,
@@ -5213,7 +5228,7 @@ function AllSortedPrototype() {
         padding: '14px 16px',
         borderRadius: 12,
         marginBottom: 8,
-        background: storePick === s.id ? C.accentMuted : C.bgEl,
+        background: storePick === s.id ? C.accent + '1F' : C.bgEl,
         border: "1.5px solid ".concat(storePick === s.id ? C.accent : C.border),
         cursor: 'pointer',
         transition: 'all 0.2s'
@@ -5281,7 +5296,7 @@ function AllSortedPrototype() {
     const discardAndClose = () => closeWithAnim('portions', () => setShowPortions(false));
     const szBg = {
       S: C.carbs + '2a',
-      M: C.accentMuted,
+      M: C.accent + '2a',
       L: C.warning + '2a'
     };
     const szBorder = {
@@ -5405,10 +5420,12 @@ function AllSortedPrototype() {
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 20,
+        fontSize: 18,
+        fontWeight: 800,
+        color: C.text,
         lineHeight: 1
       }
-    }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("span", {
+    }, i + 1), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         fontWeight: 700,
@@ -5534,7 +5551,7 @@ function AllSortedPrototype() {
     const quickMeals = sourceMeals.filter(m => parseInt(m.time || '0') <= 25).map(m => m.name.split(' ')[0]);
     const bigMeal = sourceMeals.length ? sourceMeals.reduce((a, b) => parseInt(a.time || '0') > parseInt(b.time || '0') ? a : b) : null;
     const hasStew = sourceMeals.some(m => m.name.includes('Stew') || m.name.includes('Pie'));
-    const chips = [avgProtein > 0 && "~".concat(avgProtein, "g protein"), cuisines.length > 0 && "".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), avgTime > 0 && "~".concat(avgTime, " min")].filter(Boolean);
+    const chips = [avgProtein > 0 && { label: "~".concat(avgProtein, "g protein"), color: C.protein }, cuisines.length > 0 && { label: "".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), color: C.fat }, avgTime > 0 && { label: "~".concat(avgTime, " min"), color: C.fibre }].filter(Boolean);
 
     // Tips: from past week data if history mode, otherwise derived from current meals
     const tips = historyInsightWeek?.tips || [bigMeal && parseInt(bigMeal.time || '0') >= 55 ? {
@@ -5617,17 +5634,17 @@ function AllSortedPrototype() {
         flexWrap: 'wrap'
       }
     }, chips.map(c => /*#__PURE__*/React.createElement("span", {
-      key: c,
+      key: c.label,
       style: {
-        background: C.accentMuted,
-        color: C.accentSoft,
+        background: c.color + '22',
+        color: c.color,
         borderRadius: 20,
         padding: '4px 12px',
         fontSize: 12,
         fontWeight: 600,
         whiteSpace: 'nowrap'
       }
-    }, c))), isPremium ? /*#__PURE__*/React.createElement("div", {
+    }, c.label))), isPremium ? /*#__PURE__*/React.createElement("div", {
       style: {
         padding: '14px 20px 28px',
         display: 'flex',
@@ -5883,9 +5900,10 @@ function AllSortedPrototype() {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, cursor: isPast ? 'default' : 'pointer' }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          width: 34, height: 34, borderRadius: '50%',
-          background: isSel ? C.accent : isToday ? C.accentMuted : 'transparent',
-          color: isSel ? C.white : isPast ? C.textHint : isToday ? C.accent : C.text,
+          width: 34, height: 34, borderRadius: '50%', boxSizing: 'border-box',
+          background: isSel ? C.accent : 'transparent',
+          border: isToday && !isSel ? "1.5px solid ".concat(C.textHint) : '1.5px solid transparent',
+          color: isSel ? C.white : isPast ? C.textHint : C.text,
           fontSize: 14, fontWeight: isSel || isToday ? 700 : 400,
           opacity: isPast ? 0.35 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
