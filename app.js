@@ -2561,38 +2561,36 @@ function AllSortedPrototype() {
         style: {
           display: 'flex',
           alignItems: 'center',
-          padding: '10px 10px 10px',
-          gap: 7,
+          padding: '6px 10px 6px 6px',
+          gap: 8,
           flex: 1
         }
       }, !isFrozen ? /*#__PURE__*/React.createElement("div", {
         'data-drag-handle': 'true',
         style: {
           color: isDragging ? C.accent : C.textSec,
-          fontSize: 20,
+          fontSize: 22,
           cursor: 'grab',
           flexShrink: 0,
           userSelect: 'none',
           lineHeight: 1,
           alignSelf: 'center',
           touchAction: 'none',
-          padding: '2px 4px',
-          minWidth: 24,
-          minHeight: 24,
+          width: 30,
+          minHeight: 30,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }
       }, "\u2261") : /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 32,
+          fontSize: frozenOrdinals[i] === '\u00d7' ? 36 : 32,
           fontWeight: 700,
           color: isOff ? C.textHint : C.textSec,
           flexShrink: 0,
           lineHeight: 1,
           alignSelf: 'center',
-          padding: '2px 4px',
-          minWidth: 36,
+          width: 30,
           textAlign: 'center',
           userSelect: 'none'
         }
