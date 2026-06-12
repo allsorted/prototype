@@ -4,7 +4,7 @@
 // refreshes the cache with it, so pushes show up immediately without needing
 // to bump this name, clear site data, or reinstall. Cache is only used when
 // the network is unavailable (offline).
-const CACHE_NAME = 'allsorted-proto-v1';
+const CACHE_NAME = 'allsorted-proto-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -44,8 +44,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Subresources (app.js, recipes.js, images…) are fetched with cache: 'reload' so the
+  // network request bypasses the browser HTTP cache entirely — edits always show up on
+  // reload with no manual cache-busting. Navigation requests can't be reconstructed, so
+  // those pass through unchanged (the browser revalidates the document on reload anyway).
+  const req = event.request.mode === 'navigate'
+    ? event.request
+    : new Request(event.request, { cache: 'reload' });
+
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then((response) => {
         if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
