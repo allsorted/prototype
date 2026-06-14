@@ -1718,6 +1718,40 @@ function AllSortedPrototype() {
       boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
     }
   }));
+  // Shared meal-card body (flex row: rail · photo · content · right column).
+  // One source of truth for the live plan, the frozen plan, and the Past Weeks history detail.
+  const MealCardBody = ({ meal, label, ordinal, isFrozen, isOff, idx, isDragging, hasConflict, onOpen }) => {
+    const cc = CUISINE_COLOR[meal.cuisine] || C.textSec;
+    const tc = meal.time ? timeColor(meal.time) : C.textSec;
+    const badge = (lbl, color, truncate) => /*#__PURE__*/React.createElement("span", {
+      style: { background: color + '28', color, borderRadius: 4, padding: '0 6px', height: 18, display: 'inline-block', lineHeight: '18px', fontSize: 10, fontWeight: 600, letterSpacing: 0.2, flexShrink: truncate ? 1 : 0, minWidth: truncate ? 0 : undefined, overflow: truncate ? 'hidden' : undefined, textOverflow: truncate ? 'ellipsis' : undefined, whiteSpace: truncate ? 'nowrap' : undefined }
+    }, lbl);
+    return /*#__PURE__*/React.createElement("div", {
+      style: { display: 'flex', alignItems: 'center', padding: '8px 8px 8px 4px', gap: 7, flex: 1 }
+    }, isFrozen
+      ? /*#__PURE__*/React.createElement("div", { style: { fontSize: ordinal === '×' ? 36 : 32, fontWeight: 700, color: isOff ? C.textHint : C.textSec, flexShrink: 0, lineHeight: 1, alignSelf: 'center', width: 26, textAlign: 'center', userSelect: 'none' } }, ordinal)
+      : /*#__PURE__*/React.createElement("div", { 'data-drag-handle': 'true', style: { color: isDragging ? C.accent : C.textSec, fontSize: 22, cursor: 'grab', flexShrink: 0, userSelect: 'none', lineHeight: 1, alignSelf: 'center', touchAction: 'none', width: 26, minHeight: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' } }, "≡"),
+    /*#__PURE__*/React.createElement("div", {
+      onClick: isOff ? undefined : onOpen,
+      style: { alignSelf: 'stretch', aspectRatio: '1', borderRadius: 8, background: C.bgEl, overflow: 'hidden', position: 'relative', flexShrink: 0, cursor: isOff ? 'default' : 'pointer' }
+    }, /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, opacity: isOff ? 0.4 : 1 } }, meal.emoji),
+      meal.photo && /*#__PURE__*/React.createElement("img", { src: meal.photo, alt: "", style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: isOff ? 0.4 : 1 }, onError: e => { e.target.style.display = 'none'; } }),
+      hasConflict && /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', top: 2, left: 2, width: 17, height: 17, borderRadius: '50%', background: '#EF5350', color: C.white, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 1px 4px rgba(0,0,0,0.5)' } }, "!")),
+    /*#__PURE__*/React.createElement("div", {
+      onClick: isOff ? undefined : onOpen,
+      style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center', cursor: isOff ? 'default' : 'pointer' }
+    }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' } },
+      label && /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: isOff ? C.textHint : C.textSec, letterSpacing: 0.8, flexShrink: 0, whiteSpace: 'nowrap' } }, label),
+      meal.time && badge(parseInt(meal.time) + ' min', tc),
+      meal.cuisine && badge(meal.cuisine, cc, true)),
+      /*#__PURE__*/React.createElement("div", { style: { ...T.bodyMed, color: isOff ? C.textSec : C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 } }, meal.name)),
+    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' } },
+      !isFrozen && /*#__PURE__*/React.createElement("button", {
+        onClick: e => { e.stopPropagation(); if (!isOff) { setDpMode('copy'); setCopySource(idx); setShowDayPicker(true); } },
+        style: { background: 'none', border: 'none', fontSize: 14, cursor: isOff ? 'default' : 'pointer', opacity: isOff ? 0.2 : 0.55, color: C.textSec, padding: 0, lineHeight: 1 }
+      }, "📋"),
+      /*#__PURE__*/React.createElement(Toggle, { on: !isOff, onToggle: isFrozen ? undefined : () => toggleDay(idx), disabled: isFrozen })));
+  };
   const Stepper = ({
     label,
     value,
@@ -2490,7 +2524,7 @@ function AllSortedPrototype() {
       ref: planCardsRef,
       style: {
         flex: 1,
-        padding: '6px 12px 6px',
+        padding: '6px 8px 6px',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
@@ -2557,184 +2591,17 @@ function AllSortedPrototype() {
           willChange: isDragging ? 'transform' : 'auto',
           animation: isShaking ? 'shake 0.38s ease' : (cascade ? "cardIn 0.4s ease-out ".concat(i * 0.06, "s both") : 'none')
         }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          padding: '6px 10px 6px 6px',
-          gap: 8,
-          flex: 1
-        }
-      }, !isFrozen ? /*#__PURE__*/React.createElement("div", {
-        'data-drag-handle': 'true',
-        style: {
-          color: isDragging ? C.accent : C.textSec,
-          fontSize: 22,
-          cursor: 'grab',
-          flexShrink: 0,
-          userSelect: 'none',
-          lineHeight: 1,
-          alignSelf: 'center',
-          touchAction: 'none',
-          width: 30,
-          minHeight: 30,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }
-      }, "\u2261") : /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: frozenOrdinals[i] === '\u00d7' ? 36 : 32,
-          fontWeight: 700,
-          color: isOff ? C.textHint : C.textSec,
-          flexShrink: 0,
-          lineHeight: 1,
-          alignSelf: 'center',
-          width: 30,
-          textAlign: 'center',
-          userSelect: 'none'
-        }
-      }, frozenOrdinals[i]), /*#__PURE__*/React.createElement("div", {
-        onClick: () => {
-          if (dragSrcIdx !== null) return;
-          if (!isOff) {
-            setActiveRecipe({
-              meal,
-              mealIdx: meal.id
-            });
-            setRecipeTab('ingredients');
-            setShowRecipe(true);
-          }
-        },
-        style: {
-          alignSelf: 'stretch',
-          aspectRatio: '1',
-          borderRadius: 8,
-          background: C.bgEl,
-          overflow: 'hidden',
-          position: 'relative',
-          flexShrink: 0,
-          cursor: isOff ? 'default' : 'pointer'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 22,
-          opacity: isOff ? 0.4 : 1
-        }
-      }, meal.emoji), meal.photo && /*#__PURE__*/React.createElement("img", {
-        src: meal.photo,
-        alt: "",
-        style: {
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          opacity: isOff ? 0.4 : 1
-        },
-        onError: e => {
-          e.target.style.display = 'none';
-        }
-      }), hasConflict && /*#__PURE__*/React.createElement("div", {
-        style: {
-          position: 'absolute',
-          top: 2,
-          left: 2,
-          width: 17,
-          height: 17,
-          borderRadius: '50%',
-          background: '#EF5350',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 9,
-          color: '#fff',
-          fontWeight: 800,
-          lineHeight: 1,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
-        }
-      }, "!")), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-          justifyContent: 'center',
-          cursor: isOff ? 'default' : 'pointer'
-        },
-        onClick: () => {
-          if (!isOff) {
-            setActiveRecipe({
-              meal,
-              mealIdx: meal.id
-            });
-            setRecipeTab('ingredients');
-            setShowRecipe(true);
-          }
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          overflow: 'hidden'
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          fontWeight: 800,
-          color: isOff ? C.textHint : C.textSec,
-          letterSpacing: 0.8,
-          flexShrink: 0,
-          whiteSpace: 'nowrap'
-        }
-      }, isFrozen ? null : cardLabel(i)), badge(parseInt(meal.time) + ' min', tc), badge(currentCuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
-        style: {
-          ...T.bodyMed,
-          color: isOff ? C.textSec : C.text,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          lineHeight: 1.2
-        }
-      }, currentName)), /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexShrink: 0,
-          alignSelf: 'center'
-        }
-      }, !isFrozen && /*#__PURE__*/React.createElement("button", {
-        onClick: e => {
-          e.stopPropagation();
-          if (!isOff) {
-            setDpMode('copy');
-            setCopySource(i);
-            setShowDayPicker(true);
-          }
-        },
-        style: {
-          background: 'none',
-          border: 'none',
-          fontSize: 14,
-          cursor: isOff ? 'default' : 'pointer',
-          opacity: isOff ? 0.2 : 0.55,
-          color: C.textSec,
-          padding: 0,
-          lineHeight: 1
-        }
-      }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement(Toggle, {
-        on: !isOff,
-        onToggle: isFrozen ? undefined : () => toggleDay(i),
-        disabled: isFrozen
-      }))), hasSwaps && /*#__PURE__*/React.createElement("div", {
+      }, /*#__PURE__*/React.createElement(MealCardBody, {
+        meal: meal,
+        label: isFrozen ? null : cardLabel(i),
+        ordinal: frozenOrdinals[i],
+        isFrozen: isFrozen,
+        isOff: isOff,
+        idx: i,
+        isDragging: isDragging,
+        hasConflict: hasConflict,
+        onOpen: () => { setActiveRecipe({ meal: meal, mealIdx: meal.id }); setRecipeTab('ingredients'); setShowRecipe(true); }
+      }), hasSwaps && /*#__PURE__*/React.createElement("div", {
         style: {
           position: 'absolute',
           bottom: 4,
@@ -6621,7 +6488,7 @@ function AllSortedPrototype() {
     }), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
-        padding: '6px 12px 6px',
+        padding: '6px 8px 6px',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
@@ -6646,118 +6513,22 @@ function AllSortedPrototype() {
           borderRadius: 10,
           border: '1px solid transparent',
           flex: 1,
-          minHeight: 88,
-          maxHeight: 110,
+          minHeight: 0,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
         }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          padding: '8px 10px',
-          gap: 7,
-          flex: 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          color: C.border,
-          fontSize: 14,
-          flexShrink: 0,
-          lineHeight: 1,
-          opacity: 0.35,
-          cursor: 'default',
-          userSelect: 'none'
-        }
-      }, "\u2261"), /*#__PURE__*/React.createElement("div", {
-        onClick: () => {
-          setActiveRecipe({
-            meal: fullMeal,
-            mealIdx: 0
-          });
-          setRecipeTab('ingredients');
-          setShowRecipe(true);
-        },
-        style: {
-          width: 56,
-          height: 56,
-          alignSelf: 'center',
-          borderRadius: 8,
-          background: C.bgEl,
-          overflow: 'hidden',
-          position: 'relative',
-          cursor: 'pointer',
-          flexShrink: 0
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 24
-        }
-      }, meal.emoji), fullMeal.photo && /*#__PURE__*/React.createElement("img", {
-        src: fullMeal.photo,
-        alt: "",
-        style: {
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover'
-        },
-        onError: e => {
-          e.target.style.display = 'none';
-        }
-      })), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-          cursor: 'pointer'
-        },
-        onClick: () => {
-          setActiveRecipe({
-            meal: fullMeal,
-            mealIdx: 0
-          });
-          setRecipeTab('ingredients');
-          setShowRecipe(true);
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          overflow: 'hidden'
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          fontWeight: 800,
-          color: C.textSec,
-          letterSpacing: 0.8,
-          flexShrink: 0,
-          whiteSpace: 'nowrap'
-        }
-      }, hCardLabel(i)), meal.time && badge(parseInt(meal.time) + ' min', tc), meal.cuisine && badge(meal.cuisine, cc, true)), /*#__PURE__*/React.createElement("div", {
-        style: {
-          ...T.bodyMed,
-          color: C.text,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          lineHeight: 1.2
-        }
-      }, meal.name)), /*#__PURE__*/React.createElement(Toggle, {
-        on: true,
-        disabled: true
-      })), /*#__PURE__*/React.createElement("div", {
+      }, /*#__PURE__*/React.createElement(MealCardBody, {
+        meal: { ...fullMeal, emoji: meal.emoji, time: meal.time, cuisine: meal.cuisine, name: meal.name, photo: fullMeal.photo },
+        label: hCardLabel(i),
+        ordinal: String(i + 1),
+        isFrozen: true,
+        isOff: false,
+        idx: i,
+        isDragging: false,
+        hasConflict: false,
+        onOpen: () => { setActiveRecipe({ meal: fullMeal, mealIdx: 0 }); setRecipeTab('ingredients'); setShowRecipe(true); }
+      }), /*#__PURE__*/React.createElement("div", {
         style: {
           height: 7
         }
