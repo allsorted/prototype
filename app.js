@@ -1720,7 +1720,7 @@ function AllSortedPrototype() {
   }));
   // Shared meal-card body (flex row: rail · photo · content · right column).
   // One source of truth for the live plan, the frozen plan, and the Past Weeks history detail.
-  const MealCardBody = ({ meal, label, ordinal, isFrozen, isOff, idx, isDragging, hasConflict, onOpen }) => {
+  const MealCardBody = ({ meal, label, ordinal, isFrozen, isOff, idx, isDragging, hasConflict, onOpen, share }) => {
     const cc = CUISINE_COLOR[meal.cuisine] || C.textSec;
     const tc = meal.time ? timeColor(meal.time) : C.textSec;
     const badge = (lbl, color, truncate) => /*#__PURE__*/React.createElement("span", {
@@ -1728,7 +1728,7 @@ function AllSortedPrototype() {
     }, lbl);
     return /*#__PURE__*/React.createElement("div", {
       style: { display: 'flex', alignItems: 'center', padding: '8px 8px 8px 4px', gap: 7, flex: 1 }
-    }, isFrozen
+    }, share ? null : isFrozen
       ? /*#__PURE__*/React.createElement("div", { style: { fontSize: ordinal === '×' ? 36 : 32, fontWeight: 700, color: isOff ? C.textHint : C.textSec, flexShrink: 0, lineHeight: 1, alignSelf: 'center', width: 26, textAlign: 'center', userSelect: 'none' } }, ordinal)
       : /*#__PURE__*/React.createElement("div", { 'data-drag-handle': 'true', style: { color: isDragging ? C.accent : C.textSec, fontSize: 22, cursor: 'grab', flexShrink: 0, userSelect: 'none', lineHeight: 1, alignSelf: 'center', touchAction: 'none', width: 26, minHeight: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' } }, "≡"),
     /*#__PURE__*/React.createElement("div", {
@@ -1745,7 +1745,7 @@ function AllSortedPrototype() {
       meal.time && badge(parseInt(meal.time) + ' min', tc),
       meal.cuisine && badge(meal.cuisine, cc, true)),
       /*#__PURE__*/React.createElement("div", { style: { ...T.bodyMed, color: isOff ? C.textSec : C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 } }, meal.name)),
-    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' } },
+    !share && /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' } },
       !isFrozen && /*#__PURE__*/React.createElement("button", {
         onClick: e => { e.stopPropagation(); if (!isOff) { setDpMode('copy'); setCopySource(idx); setShowDayPicker(true); } },
         style: { background: 'none', border: 'none', fontSize: 14, cursor: isOff ? 'default' : 'pointer', opacity: isOff ? 0.2 : 0.55, color: C.textSec, padding: 0, lineHeight: 1 }
@@ -6039,292 +6039,63 @@ function AllSortedPrototype() {
   const ShareSheet = () => {
     if (!showShareSheet) return null;
     const isHistory = !!historyWeek;
-
-    // Meal rows: { emoji, day (mixed case "Mon 25"), name }
-    const shareMeals = isHistory ? historyWeek.meals.map((m, i) => {
-      const d = new Date(historyWeek.delivery);
-      d.setDate(d.getDate() + i);
-      return {
-        emoji: m.emoji,
-        day: "".concat(DAY_SHORT[d.getDay()], " ").concat(d.getDate()),
-        name: m.name
-      };
-    }) : mealOrder.map((idx, i) => {
-      const m = getMealAtDay(i);
-      return {
-        emoji: m.emoji,
-        day: "".concat(DAY_SHORT[cardDate(i).getDay()], " ").concat(cardDate(i).getDate()),
-        name: m.name
-      };
-    });
-
-    // Header label
-    const label = isHistory ? pastWeekRange(historyWeek.delivery).toUpperCase() : 'WEEK SORTED ✓';
-
-    // Nutrition stats
-    const stats = isHistory ? (() => {
-      const wp = historyWeek.meals.reduce((s, m) => s + (m.protein || 0), 0);
-      return [{
-        val: wp,
-        unit: 'protein',
-        color: C.protein
-      }, {
-        val: Math.round(wp * 0.9),
-        unit: 'carbs',
-        color: C.carbs
-      }, {
-        val: Math.round(wp * 0.4),
-        unit: 'fat',
-        color: C.fat
-      }, {
-        val: Math.round(wp * 18),
-        unit: 'kcal',
-        color: '#F0F0F0'
-      }];
-    })() : (() => {
-      const a = mealOrder.map((_, i) => getMealAtDay(i)).filter((_, i) => dayOn[i]);
-      return [{
-        val: a.reduce((s, m) => s + Math.round(m.protein * 4 + m.carbs * 4 + m.fat * 9), 0),
-        unit: 'kcal',
-        color: '#F0F0F0'
-      }, {
-        val: a.reduce((s, m) => s + m.protein, 0),
-        unit: 'protein',
-        color: C.protein
-      }, {
-        val: a.reduce((s, m) => s + m.carbs, 0),
-        unit: 'carbs',
-        color: C.carbs
-      }, {
-        val: a.reduce((s, m) => s + m.fat, 0),
-        unit: 'fat',
-        color: C.fat
-      }];
-    })();
-
-    // Estimate
+    const items = isHistory
+      ? historyWeek.meals.map((m, i) => {
+          const full = ALL_RECIPES.find(r => r.name === m.name) || m;
+          const d = new Date(historyWeek.delivery);
+          d.setDate(d.getDate() + i);
+          return { meal: { ...full, name: m.name, emoji: m.emoji, cuisine: m.cuisine, time: m.time, photo: full.photo }, label: DAY_SHORT[d.getDay()].toUpperCase() + ' ' + d.getDate() };
+        })
+      : mealOrder.map((_, i) => i).filter(i => dayOn[i]).map(i => ({ meal: getMealAtDay(i), label: cardLabel(i) }));
+    const ms = items.map(x => x.meal);
+    const n = ms.length || 1;
+    const avg = k => Math.round(ms.reduce((sum, m) => sum + (m[k] || 0), 0) / n);
+    const pr = avg('protein'), cb = avg('carbs'), ft = avg('fat');
+    const kcal = Math.round(pr * 4 + cb * 4 + ft * 9);
+    const macros = [{ v: kcal, u: 'kcal', col: C.text }, { v: pr + 'g', u: 'protein', col: C.protein }, { v: cb + 'g', u: 'carbs', col: C.carbs }, { v: ft + 'g', u: 'fat', col: C.fat }];
     const est = isHistory ? historyWeek.estimate : totalEstimate;
-    const estLbl = "~\u20AC".concat(est.toFixed(2)).concat(!isHistory && store ? " at ".concat(store) : '');
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        inset: 0,
-        zIndex: 140
-      },
-      'data-closing': closingSheet === 'share' ? 'true' : undefined
-    }, /*#__PURE__*/React.createElement("div", {
-      className: sheetAnimDone.share ? 'backdrop-done' : 'backdrop-anim',
-      style: {
-        position: 'absolute',
-        inset: 0,
-        background: 'rgba(0,0,0,0.65)'
-      },
-      onClick: () => closeWithAnim('share', () => setShowShareSheet(false))
-    }), /*#__PURE__*/React.createElement("div", {
-      className: sheetAnimDone.share ? 'sheet-done' : 'sheet-slide',
-      onAnimationEnd: () => setSheetAnimDone(p => ({ ...p, share: true })),
-      style: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: C.bgSec,
-        borderRadius: '18px 18px 0 0'
-      }
-    }, /*#__PURE__*/React.createElement(SheetHandle, {closeFn: () => closeWithAnim('share', () => setShowShareSheet(false)), swipeDismissFn: () => setShowShareSheet(false)}), /*#__PURE__*/React.createElement("div", {
-      style: {
-        margin: '4px 16px 12px',
-        borderRadius: 16,
-        overflow: 'hidden',
-        border: "1px solid ".concat(C.accent, "44")
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: 'linear-gradient(135deg,#071f07 0%,#0d2e0d 100%)',
-        padding: '14px 16px 12px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        background: C.accent,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 14,
-        color: C.white,
-        fontWeight: 800
-      }
-    }, "\u2713"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        ...T.bodyMed,
-        color: C.white,
-        letterSpacing: 0.3
-      }
-    }, "AllSorted")), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 10,
-        fontWeight: 600,
-        color: C.accentSoft,
-        letterSpacing: 0.4
-      }
-    }, label)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2
-      }
-    }, shareMeals.map((m, i) => /*#__PURE__*/React.createElement("div", {
-      key: i,
-      style: {
-        display: 'flex',
-        gap: 6,
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.7)'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        width: 20,
-        flexShrink: 0
-      }
-    }, m.emoji), /*#__PURE__*/React.createElement("span", {
-      style: {
-        flexShrink: 0,
-        minWidth: 42,
-        whiteSpace: 'nowrap',
-        color: 'rgba(255,255,255,0.4)'
-      }
-    }, m.day), /*#__PURE__*/React.createElement("span", {
-      style: {
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap'
-      }
-    }, m.name))))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#0a1a0a',
-        padding: '10px 16px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        borderTop: "1px solid ".concat(C.accent, "22")
-      }
-    }, stats.map(s => /*#__PURE__*/React.createElement("div", {
-      key: s.unit,
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 15,
-        fontWeight: 800,
-        color: s.color,
-        lineHeight: 1
-      }
-    }, s.val), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 9,
-        fontWeight: 600,
-        color: 'rgba(255,255,255,0.4)',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase'
-      }
-    }, s.unit)))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#071007',
-        padding: '8px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderTop: "1px solid ".concat(C.accent, "22")
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 10,
-        color: C.accentSoft,
-        fontWeight: 600
-      }
-    }, estLbl), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 10,
-        color: 'rgba(255,255,255,0.3)',
-        letterSpacing: 0.5
-      }
-    }, "PLAN \xB7 SHOP \xB7 DONE"))), /*#__PURE__*/React.createElement("div", {
-      onClick: () => {
-        setShowShareSheet(false);
-        showToast('Link copied!');
-      },
-      style: {
-        textAlign: 'center',
-        padding: '0 0 10px',
-        ...T.hint,
-        color: C.accent,
-        fontWeight: 600,
-        cursor: 'pointer',
-        letterSpacing: 0.2
-      }
-    }, "Copy link"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-around',
-        padding: '0 8px 4px'
-      }
-    }, SHARE_APPS.map(app => /*#__PURE__*/React.createElement("div", {
-      key: app.name,
-      onClick: () => {
-        setShowShareSheet(false);
-        showToast("Shared to ".concat(app.name, "!"));
-      },
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 5,
-        cursor: 'pointer',
-        padding: '4px 6px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 50,
-        height: 50,
-        borderRadius: 14,
-        background: app.bg,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 22,
-        border: '1px solid rgba(255,255,255,0.08)'
-      }
-    }, app.icon), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 10,
-        color: C.textSec
-      }
-    }, app.name)))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: S.ftPadB
-      }
-    })));
+    const estLbl = '~\u20AC' + est.toFixed(2) + (!isHistory && store ? ' at ' + store : '');
+    const startD = isHistory ? new Date(historyWeek.delivery) : cardDate(0);
+    const endD = isHistory ? (() => { const d = new Date(historyWeek.delivery); d.setDate(d.getDate() + 6); return d; })() : cardDate(6);
+    const weekLabel = 'Week of ' + startD.getDate() + '\u2013' + endD.getDate() + ' ' + MONTH_SHORT[endD.getMonth()];
+    const close = () => closeWithAnim('share', () => setShowShareSheet(false));
+    return /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', inset: 0, zIndex: 140 }, 'data-closing': closingSheet === 'share' ? 'true' : undefined },
+      /*#__PURE__*/React.createElement("div", { className: sheetAnimDone.share ? 'backdrop-done' : 'backdrop-anim', style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)' }, onClick: close }),
+      /*#__PURE__*/React.createElement("div", { className: sheetAnimDone.share ? 'sheet-done' : 'sheet-slide', onAnimationEnd: () => setSheetAnimDone(prev => ({ ...prev, share: true })), style: { position: 'absolute', bottom: 0, left: 0, right: 0, background: C.bgSec, borderRadius: '18px 18px 0 0' } },
+        /*#__PURE__*/React.createElement(SheetHandle, { closeFn: close, swipeDismissFn: () => setShowShareSheet(false) }),
+        /*#__PURE__*/React.createElement("div", { style: { margin: '4px 16px 12px', borderRadius: 16, overflow: 'hidden', border: '1px solid ' + C.accent + '44', background: C.bg } },
+          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 14px 11px', borderBottom: '1px solid ' + C.border } },
+            /*#__PURE__*/React.createElement("img", { src: 'header-logo.png', alt: 'AllSorted', style: { height: 20, width: 'auto', objectFit: 'contain' } }),
+            /*#__PURE__*/React.createElement("span", { style: { color: C.textSec, fontSize: 11, fontWeight: 600 } }, weekLabel)
+          ),
+          /*#__PURE__*/React.createElement("div", { style: { padding: 10, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '42vh', overflowY: 'auto' } },
+            items.map((it, i) => /*#__PURE__*/React.createElement("div", { key: i, style: { background: C.bgSec, borderRadius: 10, height: 96, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 } },
+              /*#__PURE__*/React.createElement(MealCardBody, { meal: it.meal, label: it.label, isOff: false, hasConflict: false, share: true })
+            ))
+          ),
+          /*#__PURE__*/React.createElement("div", { style: { background: '#0A1A0A', padding: '12px 16px 13px', borderTop: '1px solid ' + C.accent + '22' } },
+            /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textHint, marginBottom: 7 } }, 'Macros per dinner'),
+            /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 14, flexWrap: 'wrap' } },
+              macros.map(m => /*#__PURE__*/React.createElement("span", { key: m.u, style: { fontSize: 13, fontWeight: 600 } },
+                /*#__PURE__*/React.createElement("span", { style: { color: m.col } }, m.v),
+                /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 10, marginLeft: 3 } }, m.u)
+              ))
+            ),
+            /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textHint, margin: '11px 0 4px' } }, 'Estimated cost'),
+            /*#__PURE__*/React.createElement("div", { style: { color: C.accentSoft, fontSize: 13, fontWeight: 600 } }, estLbl),
+            /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', color: '#5e8a5e', fontSize: 11, fontWeight: 600, letterSpacing: 0.3, marginTop: 12, paddingTop: 11, borderTop: '1px solid ' + C.accent + '22' } }, 'Plan it. Shop it. Cook it.')
+          )
+        ),
+        /*#__PURE__*/React.createElement("div", { style: { padding: '0 16px 4px' } },
+          /*#__PURE__*/React.createElement(Btn, { label: 'Share', onPress: () => { setShowShareSheet(false); showToast('Opening share\u2026'); } }),
+          /*#__PURE__*/React.createElement("div", { onClick: () => { setShowShareSheet(false); showToast('Link copied!'); }, style: { textAlign: 'center', padding: '11px 0 2px', ...T.hint, color: C.textSec, fontWeight: 600, cursor: 'pointer', letterSpacing: 0.2 } }, 'Copy link')
+        ),
+        /*#__PURE__*/React.createElement("div", { style: { height: S.ftPadB } })
+      )
+    );
   };
 
-  // ─── Past Weeks list screen ────────────────────────────────────────────────────
+  // Past Weeks list screen
   const PastWeeksScreen = () => /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
