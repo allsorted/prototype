@@ -6052,9 +6052,7 @@ function AllSortedPrototype() {
     const avg = k => Math.round(ms.reduce((sum, m) => sum + (m[k] || 0), 0) / n);
     const pr = avg('protein'), cb = avg('carbs'), ft = avg('fat');
     const kcal = Math.round(pr * 4 + cb * 4 + ft * 9);
-    const macros = [{ v: kcal, u: 'kcal', col: C.text }, { v: pr + 'g', u: 'protein', col: C.protein }, { v: cb + 'g', u: 'carbs', col: C.carbs }, { v: ft + 'g', u: 'fat', col: C.fat }];
-    const est = isHistory ? historyWeek.estimate : totalEstimate;
-    const estLbl = '~\u20AC' + est.toFixed(2) + (!isHistory && store ? ' at ' + store : '');
+    const macros = [{ v: kcal, u: 'kcal', col: C.text }, { v: pr + 'g', u: 'P', col: C.protein }, { v: cb + 'g', u: 'C', col: C.carbs }, { v: ft + 'g', u: 'F', col: C.fat }];
     const startD = isHistory ? new Date(historyWeek.delivery) : cardDate(0);
     const endD = isHistory ? (() => { const d = new Date(historyWeek.delivery); d.setDate(d.getDate() + 6); return d; })() : cardDate(6);
     const weekLabel = 'Week of ' + startD.getDate() + '\u2013' + endD.getDate() + ' ' + MONTH_SHORT[endD.getMonth()];
@@ -6068,27 +6066,33 @@ function AllSortedPrototype() {
             /*#__PURE__*/React.createElement("img", { src: 'header-logo.png', alt: 'AllSorted', style: { height: 20, width: 'auto', objectFit: 'contain' } }),
             /*#__PURE__*/React.createElement("span", { style: { color: C.textSec, fontSize: 11, fontWeight: 600 } }, weekLabel)
           ),
-          /*#__PURE__*/React.createElement("div", { style: { padding: 10, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '42vh', overflowY: 'auto' } },
-            items.map((it, i) => /*#__PURE__*/React.createElement("div", { key: i, style: { background: C.bgSec, borderRadius: 10, height: 96, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 } },
-              /*#__PURE__*/React.createElement(MealCardBody, { meal: it.meal, label: it.label, isOff: false, hasConflict: false, share: true })
-            ))
+          /*#__PURE__*/React.createElement("div", { style: { padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 } },
+            items.map((it, i) => {
+              const m = it.meal;
+              const isHero = i === 0;
+              const isOrphan = i === items.length - 1 && (items.length - 1) % 2 === 1;
+              const full = isHero || isOrphan;
+              const h = isHero ? 112 : isOrphan ? 74 : 88;
+              return /*#__PURE__*/React.createElement("div", { key: i, style: { gridColumn: full ? 'span 2' : undefined, position: 'relative', height: h, borderRadius: 10, overflow: 'hidden', background: C.bgEl, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+                /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isHero ? 40 : 30, opacity: 0.5 } }, m.emoji),
+                m.photo && /*#__PURE__*/React.createElement("img", { src: m.photo, alt: "", style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }, onError: e => { e.target.style.display = 'none'; } }),
+                /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: isHero ? '7px 10px' : '6px 9px', background: 'rgba(0,0,0,0.5)' } },
+                  /*#__PURE__*/React.createElement("span", { style: { fontSize: isHero ? 13 : 12, fontWeight: 600, color: C.white, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' } }, m.name))
+              );
+            })
           ),
-          /*#__PURE__*/React.createElement("div", { style: { background: '#0A1A0A', padding: '12px 16px 13px', borderTop: '1px solid ' + C.accent + '22' } },
+          /*#__PURE__*/React.createElement("div", { style: { background: '#0A1A0A', padding: '12px 14px 13px', borderTop: '1px solid ' + C.accent + '22', textAlign: 'center' } },
             /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textHint, marginBottom: 7 } }, 'Macros per dinner'),
-            /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 14, flexWrap: 'wrap' } },
-              macros.map(m => /*#__PURE__*/React.createElement("span", { key: m.u, style: { fontSize: 13, fontWeight: 600 } },
+            /*#__PURE__*/React.createElement("div", { style: { display: 'inline-flex', gap: 16, whiteSpace: 'nowrap' } },
+              macros.map(m => /*#__PURE__*/React.createElement("span", { key: m.u, style: { fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' } },
                 /*#__PURE__*/React.createElement("span", { style: { color: m.col } }, m.v),
-                /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 10, marginLeft: 3 } }, m.u)
+                /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 11, marginLeft: 3 } }, m.u)
               ))
-            ),
-            /*#__PURE__*/React.createElement("div", { style: { ...T.label, color: C.textHint, margin: '11px 0 4px' } }, 'Estimated cost'),
-            /*#__PURE__*/React.createElement("div", { style: { color: C.accentSoft, fontSize: 13, fontWeight: 600 } }, estLbl),
-            /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', color: '#5e8a5e', fontSize: 11, fontWeight: 600, letterSpacing: 0.3, marginTop: 12, paddingTop: 11, borderTop: '1px solid ' + C.accent + '22' } }, 'Plan it. Shop it. Cook it.')
+            )
           )
         ),
         /*#__PURE__*/React.createElement("div", { style: { padding: '0 16px 4px' } },
-          /*#__PURE__*/React.createElement(Btn, { label: 'Share', onPress: () => { setShowShareSheet(false); showToast('Opening share\u2026'); } }),
-          /*#__PURE__*/React.createElement("div", { onClick: () => { setShowShareSheet(false); showToast('Link copied!'); }, style: { textAlign: 'center', padding: '11px 0 2px', ...T.hint, color: C.textSec, fontWeight: 600, cursor: 'pointer', letterSpacing: 0.2 } }, 'Copy link')
+          /*#__PURE__*/React.createElement(Btn, { label: 'Share', onPress: () => { setShowShareSheet(false); showToast('Opening share\u2026'); } })
         ),
         /*#__PURE__*/React.createElement("div", { style: { height: S.ftPadB } })
       )
