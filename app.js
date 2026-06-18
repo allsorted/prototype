@@ -2507,7 +2507,7 @@ function AllSortedPrototype() {
             padding: '2px 4px',
             lineHeight: 1
           }
-        }, "\u2665"), /*#__PURE__*/React.createElement("button", {
+        }, "\uD83E\uDD0D"), /*#__PURE__*/React.createElement("button", {
           onClick: () => go('profile'),
           style: {
             background: 'none',
@@ -6168,12 +6168,8 @@ function AllSortedPrototype() {
       d.setDate(d.getDate() + i);
       return d;
     };
-    const hCardLabel = i => {
-      const d = hCardDate(i);
-      return "".concat(DAY_SHORT[d.getDay()].toUpperCase(), " ").concat(d.getDate());
-    };
     const crossesMonth = historyWeek.delivery.getMonth() !== hCardDate(6).getMonth();
-    const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[historyWeek.delivery.getMonth()], " \xB7 ").concat(MONTH_SHORT[hCardDate(6).getMonth()]) : MONTH_SHORT[historyWeek.delivery.getMonth()];
+    const monthLabel = crossesMonth ? "".concat(MONTH_SHORT[historyWeek.delivery.getMonth()], " \u2013 ").concat(MONTH_SHORT[hCardDate(6).getMonth()]) : MONTH_SHORT[historyWeek.delivery.getMonth()];
     const badge = (label, color, truncate) => /*#__PURE__*/React.createElement("span", {
       style: {
         background: color + '28',
@@ -6218,8 +6214,8 @@ function AllSortedPrototype() {
           background: 'transparent',
           border: "1px solid ".concat(C.border),
           borderRadius: 20,
-          padding: '2px 8px',
-          fontSize: 11,
+          padding: '3px 10px',
+          fontSize: 12,
           fontWeight: 600,
           color: C.textSec,
           whiteSpace: 'nowrap'
@@ -6295,7 +6291,7 @@ function AllSortedPrototype() {
         }
       }, /*#__PURE__*/React.createElement(MealCardBody, {
         meal: { ...fullMeal, emoji: meal.emoji, time: meal.time, cuisine: meal.cuisine, name: meal.name, photo: fullMeal.photo },
-        label: hCardLabel(i),
+        label: null,
         ordinal: String(i + 1),
         isFrozen: true,
         isOff: false,
@@ -6303,10 +6299,6 @@ function AllSortedPrototype() {
         isDragging: false,
         hasConflict: false,
         onOpen: () => { setActiveRecipe({ meal: fullMeal, mealIdx: 0 }); setRecipeTab('ingredients'); setShowRecipe(true); }
-      }), /*#__PURE__*/React.createElement("div", {
-        style: {
-          height: 7
-        }
       }));
     })), /*#__PURE__*/React.createElement(ScreenFooter, {
       center: true
