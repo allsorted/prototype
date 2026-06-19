@@ -906,24 +906,45 @@ const Divider = () => /*#__PURE__*/React.createElement("div", {
 // plain counts. Purchase units (bottle, bag, jar, pack, drum…) are left unchanged.
 const scaleQty = (q, factor) => {
   if (!q || Math.abs(factor - 1) < 0.05) return q;
-  // Weight/volume: "600g", "250ml", "1.5kg", "150ml"
-  const si = q.match(/^([\d.]+)\s*(g|ml|kg|l)\b/i);
-  if (si) {
+  // buildShoppingList appends an aggregation suffix " ×N" when an ingredient appears in
+  // N meals (e.g. "30g ×3"). Strip it, scale the base amount, then re-attach it unchanged —
+  // the N is a meal count, not part of the quantity, so it must never scale or be dropped.
+  const agg = q.match(/^(.*?)(\s*×\d+)$/);
+  const base = agg ? agg[1] : q;
+  const tail = agg ? agg[2] : '';
+  let out;
+  // "N × size" packs/tins (e.g. "2 × 400g tins") — scale the pack count, keep the size.
+  const mult = base.match(/^([\d.]+)\s*×\s*(.+)$/);
+  // Weight/volume — preserve any trailing words ("400g tin", "330ml can").
+  const si = base.match(/^([\d.]+)\s*(g|ml|kg|l)\b(.*)$/i);
+  // Plain integer count: "4", "1".
+  const cnt = base.match(/^(\d+)$/);
+  // Number + any other unit: "2 tbsp", "4 sprigs", "1, diced".
+  const gen = base.match(/^([\d.]+)(\s*\S.*)$/);
+  if (/\//.test(base)) {
+    out = base; // leftover "/"-compound (shouldn't remain after the data split)
+  } else if (mult) {
+    out = Math.max(1, Math.round(parseFloat(mult[1]) * factor)) + ' × ' + mult[2];
+  } else if (si) {
     const num = parseFloat(si[1]);
     const unit = si[2].toLowerCase();
-    let scaled = num * factor;
-    if (unit === 'kg' || unit === 'l') {
-      scaled = Math.round(scaled * 10) / 10; // e.g. 1.5kg → 1.1kg
-    } else {
-      scaled = Math.max(5, Math.round(scaled / 5) * 5); // round to nearest 5g/5ml
-    }
-    return "".concat(scaled).concat(unit);
+    const scaled = (unit === 'kg' || unit === 'l')
+      ? Math.round(num * factor * 10) / 10 // 1 decimal for kg/l
+      : Math.max(5, Math.round(num * factor / 5) * 5); // nearest 5g/5ml
+    out = "".concat(scaled).concat(unit).concat(si[3]);
+  } else if (cnt) {
+    out = String(Math.max(1, Math.round(parseFloat(cnt[1]) * factor)));
+  } else if (gen) {
+    const num = parseFloat(gen[1]);
+    const rest = gen[2];
+    const scaled = (/\b(tsp|tbsp)\b/i.test(rest))
+      ? Math.max(0.5, Math.round(num * factor * 2) / 2) // ½-spoon steps
+      : Math.max(1, Math.round(num * factor)); // whole units (sprigs, cloves, cans…)
+    out = String(scaled) + rest;
+  } else {
+    out = base; // qualitative ("to garnish", "small bunch") or unknown — unchanged
   }
-  // Plain integer count: "4", "1", "6"
-  const cnt = q.match(/^(\d+)$/);
-  if (cnt) return String(Math.max(1, Math.round(parseFloat(cnt[1]) * factor)));
-  // Purchase unit or complex string — return unchanged
-  return q;
+  return out + tail;
 };
 
 // ─── ItemRow ───────────────────────────────────────────────────────────────────
@@ -969,35 +990,38 @@ const ItemRow = ({
       fontWeight: 800,
       lineHeight: 1
     }
-  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      display: 'flex',
-      alignItems: 'baseline',
-      gap: 6,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
+  }, "\u2715")), /*#__PURE__*/React.createElement("span", {
     style: {
       ...T.body,
+      flex: 1,
+      minWidth: 0,
       color: isExcl ? C.textHint : C.text,
       textDecoration: isExcl ? 'line-through' : 'none',
       transition: 'color 0.15s'
     }
-  }, item.n), displayQty && /*#__PURE__*/React.createElement("span", {
+  }, item.n), (displayQty || scaledPrice) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      flexShrink: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: 1
+    }
+  }, displayQty && /*#__PURE__*/React.createElement("span", {
     style: {
       ...T.hint,
-      color: isExcl ? C.textHint : C.textSec,
+      color: C.textSec,
+      whiteSpace: 'nowrap',
       transition: 'color 0.15s'
     }
-  }, displayQty)), scaledPrice && /*#__PURE__*/React.createElement("span", {
+  }, displayQty), scaledPrice && /*#__PURE__*/React.createElement("span", {
     style: {
       ...T.meta,
-      color: isExcl ? C.textHint : C.textSec,
-      flexShrink: 0,
+      color: C.textHint,
+      whiteSpace: 'nowrap',
       transition: 'color 0.15s'
     }
-  }, "\u20AC", scaledPrice));
+  }, "\u20AC", scaledPrice)));
 };
 
 // ─── Main App ──────────────────────────────────────────────────────────────────

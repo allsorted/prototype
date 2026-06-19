@@ -29,7 +29,7 @@ const PLAN_A = [{
     price: 0.79,
     cat: 'Dairy & Eggs'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -75,7 +75,7 @@ const PLAN_A = [{
     price: 1.79,
     cat: 'Dairy & Eggs'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '2, minced',
     price: 0.25,
     cat: 'Vegetables & Fruit'
@@ -111,7 +111,7 @@ const PLAN_A = [{
     price: 6.99,
     cat: 'Meat & Fish'
   }, {
-    n: 'Onions',
+    n: 'Onion',
     q: '2, diced',
     price: 0.79,
     cat: 'Vegetables & Fruit'
@@ -167,7 +167,7 @@ const PLAN_A = [{
     price: 0.75,
     cat: 'Vegetables & Fruit'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '2, minced',
     price: 0.25,
     cat: 'Vegetables & Fruit'
@@ -344,7 +344,7 @@ const PLAN_B = [{
   allergens: ['fish', 'soy'],
   incompatible: ['veg', 'vegan'],
   ingredients: [{
-    n: 'Salmon fillet',
+    n: 'Salmon fillets',
     q: '2 × 180g',
     price: 7.99,
     cat: 'Meat & Fish'
@@ -359,7 +359,7 @@ const PLAN_B = [{
     price: 1.29,
     cat: 'Pantry & Dry'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -405,7 +405,7 @@ const PLAN_B = [{
     price: 0.39,
     cat: 'Vegetables & Fruit'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -630,7 +630,7 @@ const PLAN_B = [{
     price: 0.59,
     cat: 'Vegetables & Fruit'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '4',
     price: 0.45,
     cat: 'Vegetables & Fruit'
@@ -679,7 +679,7 @@ const SWAP_POOL = [{
     price: 1.69,
     cat: 'Pantry & Dry'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -720,7 +720,7 @@ const SWAP_POOL = [{
     price: 1.29,
     cat: 'Pantry & Dry'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -889,7 +889,7 @@ const SWAP_POOL = [{
     price: 0.39,
     cat: 'Vegetables & Fruit'
   }, {
-    n: 'Garlic cloves',
+    n: 'Garlic',
     q: '3, minced',
     price: 0.35,
     cat: 'Vegetables & Fruit'
@@ -933,7 +933,8 @@ const SWAP_POOL = [{
     { n: 'Sirloin steak', q: '220g per person', price: 8.99, cat: 'Meat & Fish' },
     { n: 'Butter', q: '40g', price: 0.80, cat: 'Dairy & Eggs' },
     { n: 'Garlic', q: '2 cloves, crushed', price: 0.40, cat: 'Vegetables & Fruit' },
-    { n: 'Fresh thyme & rosemary', q: '4 sprigs', price: 0.99, cat: 'Herbs & Spices' },
+    { n: 'Fresh thyme', q: '2 sprigs', price: 0.5, cat: 'Herbs & Spices' },
+    { n: 'Fresh rosemary', q: '2 sprigs', price: 0.49, cat: 'Herbs & Spices' },
     { n: 'Olive oil', q: '1 tbsp', price: 0.30, cat: 'Pantry & Dry' }
   ],
   steps: [
@@ -994,7 +995,8 @@ const SWAP_POOL = [{
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
     { n: 'Garam masala', q: '2 tsp', price: 0.60, cat: 'Herbs & Spices' },
-    { n: 'Ground cumin & coriander', q: '1 tsp each', price: 0.60, cat: 'Herbs & Spices' }
+    { n: 'Ground cumin', q: '1 tsp', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Ground coriander', q: '1 tsp', price: 0.3, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Melt butter in a large pan over medium heat. Fry onion until golden, about 8 minutes.',
@@ -1053,7 +1055,8 @@ const SWAP_POOL = [{
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Red pepper', q: '2, diced', price: 1.20, cat: 'Vegetables & Fruit' },
     { n: 'Garlic', q: '3 cloves', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Ground cumin & chilli powder', q: '1.5 tsp each', price: 0.70, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1.5 tsp', price: 0.35, cat: 'Herbs & Spices' },
+    { n: 'Chilli powder', q: '1.5 tsp', price: 0.35, cat: 'Herbs & Spices' },
     { n: 'Smoked paprika', q: '1 tsp', price: 0.50, cat: 'Herbs & Spices' },
     { n: 'Vegetable stock', q: '200ml', price: 0.60, cat: 'Pantry & Dry' }
   ],
@@ -1146,7 +1149,9 @@ const SWAP_POOL = [{
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Red pepper', q: '1, diced', price: 0.60, cat: 'Vegetables & Fruit' },
     { n: 'Garlic', q: '3 cloves', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Chilli powder, cumin & paprika', q: '1 tsp each', price: 0.70, cat: 'Herbs & Spices' }
+    { n: 'Chilli powder', q: '1 tsp', price: 0.24, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' },
+    { n: 'Paprika', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Brown mince in a large pan over high heat, breaking up lumps. Drain excess fat.',
@@ -1173,7 +1178,7 @@ const SWAP_POOL = [{
     { n: 'Lamb shoulder', q: '700g, cubed', price: 8.99, cat: 'Meat & Fish' },
     { n: 'Couscous', q: '250g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Onion', q: '1 large, sliced', price: 0.40, cat: 'Vegetables & Fruit' },
-    { n: 'Carrot', q: '2, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Carrots', q: '2, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
     { n: 'Chickpeas', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
     { n: 'Ras el hanout', q: '2 tsp', price: 1.29, cat: 'Herbs & Spices' },
@@ -1207,7 +1212,8 @@ const SWAP_POOL = [{
     { n: 'Beansprouts', q: '100g', price: 0.99, cat: 'Vegetables & Fruit' },
     { n: 'Fish sauce', q: '2 tbsp', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Tamarind paste', q: '2 tbsp', price: 1.49, cat: 'Pantry & Dry' },
-    { n: 'Crushed peanuts & lime', q: '30g / 1', price: 0.90, cat: 'Pantry & Dry' }
+    { n: 'Crushed peanuts', q: '30g', price: 0.45, cat: 'Pantry & Dry' },
+    { n: 'Lime', q: '1', price: 0.45, cat: 'Vegetables & Fruit' }
   ],
   steps: [
     'Soak noodles in boiling water 4 minutes until pliable but still firm. Drain.',
@@ -1234,10 +1240,13 @@ const SWAP_POOL = [{
     { n: 'Chicken thighs', q: '400g', price: 3.99, cat: 'Meat & Fish' },
     { n: 'Greek yogurt', q: '100g', price: 0.79, cat: 'Dairy & Eggs' },
     { n: 'Hummus', q: '100g', price: 1.29, cat: 'Pantry & Dry' },
-    { n: 'Cumin, coriander & turmeric', q: '1 tsp each', price: 0.70, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.24, cat: 'Herbs & Spices' },
+    { n: 'Ground coriander', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' },
+    { n: 'Turmeric', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' },
     { n: 'Garlic', q: '3 cloves', price: 0.50, cat: 'Vegetables & Fruit' },
     { n: 'Lemon', q: '1', price: 0.40, cat: 'Vegetables & Fruit' },
-    { n: 'Cucumber & tomato', q: 'half each, diced', price: 0.80, cat: 'Vegetables & Fruit' }
+    { n: 'Cucumber', q: 'half, diced', price: 0.4, cat: 'Vegetables & Fruit' },
+    { n: 'Tomato', q: 'half, diced', price: 0.4, cat: 'Vegetables & Fruit' }
   ],
   steps: [
     'Mix spices, garlic, lemon juice and 2 tbsp yogurt. Coat chicken and marinate 20 minutes.',
@@ -1267,7 +1276,8 @@ const SWAP_POOL = [{
     { n: 'Biryani spice mix', q: '2 tbsp', price: 1.49, cat: 'Herbs & Spices' },
     { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
     { n: 'Vegetable stock', q: '500ml', price: 0.80, cat: 'Pantry & Dry' },
-    { n: 'Fresh coriander & mint', q: 'handful each', price: 0.80, cat: 'Herbs & Spices' }
+    { n: 'Fresh coriander', q: 'handful', price: 0.4, cat: 'Herbs & Spices' },
+    { n: 'Fresh mint', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Rinse rice until water runs clear. Soak in cold water 20 minutes, then drain.',
@@ -1295,7 +1305,8 @@ const SWAP_POOL = [{
     { n: 'Breadcrumbs', q: '80g', price: 0.99, cat: 'Pantry & Dry' },
     { n: 'Eggs', q: '2, beaten', price: 0.80, cat: 'Dairy & Eggs' },
     { n: 'Plain flour', q: '50g', price: 0.30, cat: 'Pantry & Dry' },
-    { n: 'Courgette & cherry tomatoes', q: '1 / 200g', price: 2.49, cat: 'Vegetables & Fruit' },
+    { n: 'Courgette', q: '1', price: 1.25, cat: 'Vegetables & Fruit' },
+    { n: 'Cherry tomatoes', q: '200g', price: 1.24, cat: 'Vegetables & Fruit' },
     { n: 'Lemon', q: '1', price: 0.40, cat: 'Vegetables & Fruit' }
   ],
   steps: [
@@ -1321,12 +1332,13 @@ const SWAP_POOL = [{
   incompatible: ['veg', 'vegan'],
   ingredients: [
     { n: 'Lamb shoulder', q: '700g, cubed', price: 7.99, cat: 'Meat & Fish' },
-    { n: 'Potato', q: '400g, cubed', price: 1.29, cat: 'Vegetables & Fruit' },
-    { n: 'Carrot', q: '3, sliced', price: 0.80, cat: 'Vegetables & Fruit' },
+    { n: 'Potatoes', q: '400g, cubed', price: 1.29, cat: 'Vegetables & Fruit' },
+    { n: 'Carrots', q: '3, sliced', price: 0.80, cat: 'Vegetables & Fruit' },
     { n: 'Parsnip', q: '2, cubed', price: 0.90, cat: 'Vegetables & Fruit' },
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Lamb or beef stock', q: '750ml', price: 1.29, cat: 'Pantry & Dry' },
-    { n: 'Fresh thyme & rosemary', q: '4 sprigs', price: 0.99, cat: 'Herbs & Spices' }
+    { n: 'Fresh thyme', q: '2 sprigs', price: 0.5, cat: 'Herbs & Spices' },
+    { n: 'Fresh rosemary', q: '2 sprigs', price: 0.49, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Brown lamb in batches in a heavy pot over high heat until dark on all sides. Set aside.',
@@ -1354,9 +1366,11 @@ const SWAP_POOL = [{
     { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
     { n: 'Honey', q: '2 tbsp', price: 0.80, cat: 'Pantry & Dry' },
     { n: 'Sesame oil', q: '1 tbsp', price: 0.80, cat: 'Pantry & Dry' },
-    { n: 'Garlic & ginger', q: '2 cloves / 1cm', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Garlic', q: '2 cloves', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Fresh ginger', q: '1cm', price: 0.3, cat: 'Herbs & Spices' },
     { n: 'Basmati rice', q: '180g', price: 0.90, cat: 'Pantry & Dry' },
-    { n: 'Sesame seeds & spring onions', q: 'to garnish', price: 0.80, cat: 'Herbs & Spices' }
+    { n: 'Sesame seeds', q: 'to garnish', price: 0.4, cat: 'Herbs & Spices' },
+    { n: 'Spring onions', q: 'to garnish', price: 0.4, cat: 'Vegetables & Fruit' }
   ],
   steps: [
     'Cook rice per packet instructions.',
@@ -1383,7 +1397,7 @@ const SWAP_POOL = [{
     { n: 'Penne pasta', q: '350g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '2 x 400g tins', price: 1.58, cat: 'Pantry & Dry' },
     { n: 'Garlic', q: '4 cloves, sliced', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Dried chilli flakes', q: '1-2 tsp', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Chilli flakes', q: '1-2 tsp', price: 0.50, cat: 'Herbs & Spices' },
     { n: 'Olive oil', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
     { n: 'Fresh basil', q: 'handful', price: 0.99, cat: 'Herbs & Spices' }
   ],
@@ -1439,7 +1453,7 @@ const SWAP_POOL = [{
   ingredients: [
     { n: 'Chicken breast', q: '2, butterflied', price: 5.49, cat: 'Meat & Fish' },
     { n: 'Breadcrumbs', q: '80g', price: 0.99, cat: 'Pantry & Dry' },
-    { n: 'Egg', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
+    { n: 'Eggs', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
     { n: 'Passata', q: '200ml', price: 0.89, cat: 'Pantry & Dry' },
     { n: 'Mozzarella', q: '125g, torn', price: 2.49, cat: 'Dairy & Eggs' },
     { n: 'Parmesan', q: '30g, grated', price: 1.20, cat: 'Dairy & Eggs' },
@@ -1527,7 +1541,7 @@ const SWAP_POOL = [{
     { n: 'Chicken breast', q: '2, flattened', price: 5.49, cat: 'Meat & Fish' },
     { n: 'Panko breadcrumbs', q: '80g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Plain flour', q: '50g', price: 0.30, cat: 'Pantry & Dry' },
-    { n: 'Egg', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
+    { n: 'Eggs', q: '1, beaten', price: 0.40, cat: 'Dairy & Eggs' },
     { n: 'Japanese curry sauce', q: '3 roux cubes or 1 packet', price: 2.99, cat: 'Pantry & Dry' },
     { n: 'Basmati rice', q: '180g', price: 0.90, cat: 'Pantry & Dry' }
   ],
@@ -1558,7 +1572,8 @@ const SWAP_POOL = [{
     { n: 'Mirin', q: '1 tbsp', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Soy sauce', q: '1 tbsp', price: 0.60, cat: 'Pantry & Dry' },
     { n: 'Sesame oil', q: '1 tsp', price: 0.80, cat: 'Pantry & Dry' },
-    { n: 'Spring onions & sesame seeds', q: 'to garnish', price: 0.80, cat: 'Herbs & Spices' }
+    { n: 'Spring onions', q: 'to garnish', price: 0.4, cat: 'Vegetables & Fruit' },
+    { n: 'Sesame seeds', q: 'to garnish', price: 0.4, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Mix miso, mirin, soy sauce and sesame oil into a smooth glaze.',
@@ -1585,9 +1600,11 @@ const SWAP_POOL = [{
     { n: 'Sirloin steak', q: '300g, very thinly sliced', price: 7.99, cat: 'Meat & Fish' },
     { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
     { n: 'Sesame oil', q: '1 tbsp', price: 0.80, cat: 'Pantry & Dry' },
-    { n: 'Garlic & ginger', q: '3 cloves / 1cm piece', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Garlic', q: '3 cloves', price: 0.25, cat: 'Herbs & Spices' },
+    { n: 'Fresh ginger', q: '1cm piece', price: 0.25, cat: 'Herbs & Spices' },
     { n: 'Brown sugar', q: '1 tbsp', price: 0.30, cat: 'Pantry & Dry' },
-    { n: 'Basmati rice & spring onions', q: '180g / 4', price: 1.50, cat: 'Pantry & Dry' }
+    { n: 'Basmati rice', q: '180g', price: 0.75, cat: 'Pantry & Dry' },
+    { n: 'Spring onions', q: '4', price: 0.75, cat: 'Vegetables & Fruit' }
   ],
   steps: [
     'Cook rice per packet. Mix soy sauce, sesame oil, garlic, ginger and sugar. Coat beef and rest 10 minutes.',
@@ -1615,7 +1632,8 @@ const SWAP_POOL = [{
     { n: 'Mixed veg (carrot, courgette, spinach, mushrooms)', q: '300g', price: 2.49, cat: 'Vegetables & Fruit' },
     { n: 'Eggs', q: '2', price: 0.80, cat: 'Dairy & Eggs' },
     { n: 'Gochujang paste', q: '2 tbsp', price: 2.29, cat: 'Pantry & Dry' },
-    { n: 'Sesame oil & soy sauce', q: '1 tbsp each', price: 1.00, cat: 'Pantry & Dry' }
+    { n: 'Sesame oil', q: '1 tbsp', price: 0.5, cat: 'Pantry & Dry' },
+    { n: 'Soy sauce', q: '1 tbsp', price: 0.5, cat: 'Pantry & Dry' }
   ],
   steps: [
     'Cook rice per packet. Cut all vegetables into thin strips or julienne.',
@@ -1670,7 +1688,7 @@ const SWAP_POOL = [{
   incompatible: ['veg', 'vegan'],
   ingredients: [
     { n: 'Lamb shoulder', q: '700g, cubed', price: 8.99, cat: 'Meat & Fish' },
-    { n: 'Onions', q: '2, finely sliced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '2, finely sliced', price: 0.60, cat: 'Vegetables & Fruit' },
     { n: 'Greek yogurt', q: '150g', price: 1.19, cat: 'Dairy & Eggs' },
     { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
     { n: 'Rogan josh paste', q: '3 tbsp', price: 1.99, cat: 'Pantry & Dry' },
@@ -1703,7 +1721,10 @@ const SWAP_POOL = [{
     { n: 'Onion', q: '1, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Garlic & ginger paste', q: '2 tbsp', price: 1.29, cat: 'Pantry & Dry' },
     { n: 'Double cream', q: '100ml', price: 0.99, cat: 'Dairy & Eggs' },
-    { n: 'Ground cumin, coriander, turmeric & garam masala', q: '1 tsp each', price: 0.80, cat: 'Herbs & Spices' }
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Ground coriander', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Turmeric', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Garam masala', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Fry onion in oil over medium heat 6 minutes until golden. Add garlic-ginger paste and all spices, cook 1 minute.',
@@ -1732,7 +1753,8 @@ const SWAP_POOL = [{
     { n: 'Butter', q: '50g', price: 1.00, cat: 'Dairy & Eggs' },
     { n: 'Double cream', q: '100ml', price: 0.99, cat: 'Dairy & Eggs' },
     { n: 'Onion', q: '1, finely diced', price: 0.40, cat: 'Vegetables & Fruit' },
-    { n: 'Garlic & ginger paste & tomato purée', q: '2 tbsp each', price: 1.80, cat: 'Pantry & Dry' },
+    { n: 'Garlic & ginger paste', q: '2 tbsp', price: 0.9, cat: 'Pantry & Dry' },
+    { n: 'Tomato purée', q: '2 tbsp', price: 0.9, cat: 'Pantry & Dry' },
     { n: 'Garam masala', q: '1 tsp', price: 0.40, cat: 'Herbs & Spices' }
   ],
   steps: [
@@ -1762,7 +1784,8 @@ const SWAP_POOL = [{
     { n: 'Red onion', q: '1, sliced', price: 0.50, cat: 'Vegetables & Fruit' },
     { n: 'Fajita seasoning', q: '2 tbsp', price: 0.99, cat: 'Herbs & Spices' },
     { n: 'Flour tortillas', q: '6', price: 1.49, cat: 'Pantry & Dry' },
-    { n: 'Sour cream & guacamole', q: 'to serve', price: 2.49, cat: 'Dairy & Eggs' }
+    { n: 'Sour cream', q: 'to serve', price: 1.25, cat: 'Dairy & Eggs' },
+    { n: 'Guacamole', q: 'to serve', price: 1.24, cat: 'Dairy & Eggs' }
   ],
   steps: [
     'Toss chicken slices with half the fajita seasoning and a drizzle of oil.',
@@ -1791,7 +1814,8 @@ const SWAP_POOL = [{
     { n: 'Flour or corn tortillas', q: '8 small', price: 1.79, cat: 'Pantry & Dry' },
     { n: 'Cherry tomatoes', q: '150g, chopped', price: 1.19, cat: 'Vegetables & Fruit' },
     { n: 'Cheddar', q: '60g, grated', price: 0.80, cat: 'Dairy & Eggs' },
-    { n: 'Sour cream & lime', q: '3 tbsp / 1', price: 1.00, cat: 'Dairy & Eggs' }
+    { n: 'Sour cream', q: '3 tbsp', price: 0.5, cat: 'Dairy & Eggs' },
+    { n: 'Lime', q: '1', price: 0.5, cat: 'Vegetables & Fruit' }
   ],
   steps: [
     'Brown beef over high heat, breaking up lumps, until deeply coloured — about 6 minutes.',
@@ -1849,7 +1873,9 @@ const SWAP_POOL = [{
     { n: 'Onion', q: '1, diced', price: 0.40, cat: 'Vegetables & Fruit' },
     { n: 'Red pepper', q: '1, diced', price: 0.60, cat: 'Vegetables & Fruit' },
     { n: 'Garlic', q: '3 cloves, sliced', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Ground cumin, smoked paprika & chilli flakes', q: '1 tsp each', price: 0.70, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.24, cat: 'Herbs & Spices' },
+    { n: 'Smoked paprika', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' },
+    { n: 'Chilli flakes', q: '1 tsp', price: 0.23, cat: 'Herbs & Spices' },
     { n: 'Feta', q: '80g, crumbled', price: 1.49, cat: 'Dairy & Eggs' }
   ],
   steps: [
@@ -1875,11 +1901,14 @@ const SWAP_POOL = [{
   incompatible: ['veg', 'vegan'],
   ingredients: [
     { n: 'Lamb mince', q: '400g', price: 5.99, cat: 'Meat & Fish' },
-    { n: 'Ground cumin, coriander & cinnamon', q: '1 tsp each', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Ground coriander', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Cinnamon', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
     { n: 'Garlic', q: '2 cloves, grated', price: 0.35, cat: 'Vegetables & Fruit' },
     { n: 'Tzatziki', q: '150g', price: 1.99, cat: 'Dairy & Eggs' },
     { n: 'Flatbreads', q: '2', price: 0.99, cat: 'Pantry & Dry' },
-    { n: 'Red onion & fresh mint', q: 'half / handful', price: 0.80, cat: 'Vegetables & Fruit' }
+    { n: 'Red onion', q: 'half', price: 0.4, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh mint', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Combine lamb mince with spices, garlic and a generous pinch of salt. Mix well with your hands until everything is evenly distributed.',
@@ -1905,9 +1934,11 @@ const SWAP_POOL = [{
   ingredients: [
     { n: 'Lamb mince', q: '500g', price: 7.49, cat: 'Meat & Fish' },
     { n: 'Aubergines', q: '2 large, sliced 1cm thick', price: 2.49, cat: 'Vegetables & Fruit' },
-    { n: 'Onion & garlic', q: '1 / 3 cloves', price: 0.70, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '1', price: 0.35, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic', q: '3 cloves', price: 0.35, cat: 'Vegetables & Fruit' },
     { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
-    { n: 'Cinnamon & allspice', q: '½ tsp each', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Cinnamon', q: '½ tsp', price: 0.25, cat: 'Herbs & Spices' },
+    { n: 'Allspice', q: '½ tsp', price: 0.25, cat: 'Herbs & Spices' },
     { n: 'Béchamel sauce', q: '500ml jar', price: 2.29, cat: 'Pantry & Dry' },
     { n: 'Parmesan', q: '40g, grated', price: 1.49, cat: 'Dairy & Eggs' }
   ],
@@ -1935,9 +1966,11 @@ const SWAP_POOL = [{
   ingredients: [
     { n: 'Chicken breast', q: '400g, cubed', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Lemon', q: '1, zest and juice', price: 0.40, cat: 'Vegetables & Fruit' },
-    { n: 'Garlic & dried oregano', q: '2 cloves / 1 tsp', price: 0.50, cat: 'Herbs & Spices' },
+    { n: 'Garlic', q: '2 cloves', price: 0.25, cat: 'Herbs & Spices' },
+    { n: 'Dried oregano', q: '1 tsp', price: 0.25, cat: 'Herbs & Spices' },
     { n: 'Tzatziki', q: '150g', price: 1.99, cat: 'Dairy & Eggs' },
-    { n: 'Cherry tomatoes & cucumber', q: '150g / half', price: 1.50, cat: 'Vegetables & Fruit' },
+    { n: 'Cherry tomatoes', q: '150g', price: 0.75, cat: 'Vegetables & Fruit' },
+    { n: 'Cucumber', q: 'half', price: 0.75, cat: 'Vegetables & Fruit' },
     { n: 'Pitta breads', q: '2', price: 0.99, cat: 'Pantry & Dry' }
   ],
   steps: [
@@ -1967,7 +2000,8 @@ const SWAP_POOL = [{
     { n: 'Mixed peppers', q: '2, sliced', price: 1.29, cat: 'Vegetables & Fruit' },
     { n: 'Cherry tomatoes', q: '250g', price: 1.49, cat: 'Vegetables & Fruit' },
     { n: 'Garlic', q: '4 cloves, crushed', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Smoked paprika & chicken stock', q: '1 tsp / 150ml', price: 1.00, cat: 'Pantry & Dry' }
+    { n: 'Smoked paprika', q: '1 tsp', price: 0.5, cat: 'Herbs & Spices' },
+    { n: 'Chicken stock', q: '150ml', price: 0.5, cat: 'Pantry & Dry' }
   ],
   steps: [
     'Preheat oven to 200°C. Season chicken and brown skin-side down in an oven-proof pan over high heat 5 minutes. Remove.',
@@ -1995,8 +2029,11 @@ const SWAP_POOL = [{
     { n: 'Arborio rice', q: '200g', price: 1.99, cat: 'Pantry & Dry' },
     { n: 'Dry white wine', q: '100ml', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Fish or veg stock', q: '800ml, kept hot', price: 1.49, cat: 'Pantry & Dry' },
-    { n: 'Garlic & shallots', q: '2 cloves / 2', price: 0.60, cat: 'Vegetables & Fruit' },
-    { n: 'Butter, lemon & parsley', q: '30g / 1 / handful', price: 1.50, cat: 'Herbs & Spices' }
+    { n: 'Garlic', q: '2 cloves', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Shallots', q: '2', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Butter', q: '30g', price: 0.5, cat: 'Dairy & Eggs' },
+    { n: 'Lemon', q: '1', price: 0.5, cat: 'Vegetables & Fruit' },
+    { n: 'Parsley', q: 'handful', price: 0.5, cat: 'Herbs & Spices' }
   ],
   steps: [
     'Keep stock warm. Sauté shallots and garlic in butter over medium heat until soft, about 4 minutes.',
@@ -2024,7 +2061,8 @@ const SWAP_POOL = [{
     { n: 'Double cream', q: '150ml', price: 1.49, cat: 'Dairy & Eggs' },
     { n: 'Dijon mustard', q: '2 tsp', price: 0.80, cat: 'Pantry & Dry' },
     { n: 'Shallots', q: '2, finely diced', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Garlic & fresh thyme', q: '2 cloves / 3 sprigs', price: 0.60, cat: 'Herbs & Spices' },
+    { n: 'Garlic', q: '2 cloves', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Fresh thyme', q: '3 sprigs', price: 0.3, cat: 'Herbs & Spices' },
     { n: 'Chicken stock', q: '100ml', price: 0.50, cat: 'Pantry & Dry' }
   ],
   steps: [
@@ -2052,7 +2090,7 @@ const SWAP_POOL = [{
     { n: 'Pork sausages', q: '8', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Back bacon', q: '200g, thick cut', price: 2.99, cat: 'Meat & Fish' },
     { n: 'Baby potatoes', q: '600g, halved', price: 1.49, cat: 'Vegetables & Fruit' },
-    { n: 'Onions', q: '2, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '2, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
     { n: 'Chicken stock', q: '600ml', price: 1.19, cat: 'Pantry & Dry' },
     { n: 'Fresh parsley', q: 'handful, chopped', price: 0.75, cat: 'Herbs & Spices' }
   ],
