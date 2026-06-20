@@ -4174,14 +4174,8 @@ function AllSortedPrototype() {
       ...T.bodyMed,
       color: C.text
     }
-  }, "Premium"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.hint,
-      color: C.textSec,
-      marginTop: 3
-    }
-  }, "\u20AC12.99/mo \xB7 renews 25 May")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setIsPremium(false),
+  }, "Premium")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => go('paywall'),
     style: {
       background: C.accent,
       color: C.white,
@@ -4209,13 +4203,7 @@ function AllSortedPrototype() {
       ...T.bodyMed,
       color: C.text
     }
-  }, "Free plan"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...T.hint,
-      color: C.textSec,
-      marginTop: 3
-    }
-  }, "1 free lifetime cart fill \xB7 1 regen per week")), /*#__PURE__*/React.createElement("span", {
+  }, "Free plan")), /*#__PURE__*/React.createElement("span", {
     style: {
       background: C.accent,
       color: C.white,
@@ -4565,14 +4553,14 @@ function AllSortedPrototype() {
   }, /*#__PURE__*/React.createElement(ScreenHeader, {
     left: /*#__PURE__*/React.createElement("button", {
       onClick: goBack,
-      style: { background: 'none', border: 'none', fontSize: 26, cursor: 'pointer', color: C.textSec, padding: '0 2px', lineHeight: 1, marginLeft: -4 }
+      style: { background: 'none', border: 'none', fontSize: 26, cursor: 'pointer', color: C.textSec, padding: '0 4px', lineHeight: 1 }
     }, "\u2039")
   }), /*#__PURE__*/React.createElement("div", {
     style: { flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }
   }, /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: "28px ".concat(S.frame, "px 12px"), textAlign: 'center' }
-  }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 48, marginBottom: 10 } }, "\u2B50"),
-  /*#__PURE__*/React.createElement("div", { style: { ...T.heading, color: C.text, marginBottom: 6, fontSize: 22 } }, "AllSorted Premium"),
+  }, /*#__PURE__*/React.createElement("div", { style: { marginBottom: 16, lineHeight: 0 }, dangerouslySetInnerHTML: { __html: GOLD_CROWN_SVG.replace('width="20" height="13"', 'width="60" height="39"') } }),
+  /*#__PURE__*/React.createElement("div", { style: { ...T.heading, color: C.text, marginBottom: 8, fontSize: 22 } }, "AllSorted Premium"),
   /*#__PURE__*/React.createElement("div", { style: { ...T.body, color: C.textSec, lineHeight: 1.5, marginBottom: 6 } }, "For people who take their week seriously.")),
   /*#__PURE__*/React.createElement("div", {
     style: { padding: "0 ".concat(S.frame, "px"), display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }
@@ -4599,16 +4587,12 @@ function AllSortedPrototype() {
   }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 26 } }, f.emoji),
   /*#__PURE__*/React.createElement("div", { style: { ...T.meta, color: C.text, fontWeight: 600, lineHeight: 1.35 } }, f.t)))),
   /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', padding: "0 ".concat(S.frame, "px 12px") } },
-    /*#__PURE__*/React.createElement("span", { style: { fontSize: 34, fontWeight: 800, color: C.text } }, "\u20AC12.99"),
-    /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.textSec } }, " / month"),
-    /*#__PURE__*/React.createElement("div", { style: { ...T.hint, color: C.textHint, lineHeight: 1.6, marginTop: 8 } }, "Cancel anytime \xB7 EU 14-day refund right if unused \xB7 renews monthly"),
+    isPremium ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", { style: { fontSize: 32, fontWeight: 800, color: C.gold } }, "25 May"), /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, color: C.textSec } }, " / renewal")) : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", { style: { fontSize: 32, fontWeight: 800, color: C.accent } }, "€12.99"), /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, color: C.textSec } }, " / month")),
+    /*#__PURE__*/React.createElement("div", { style: { ...T.hint, color: C.textHint, lineHeight: 1.6, marginTop: 8 } }, (isPremium ? "Cancel or change your plan anytime in your subscription settings." : /*#__PURE__*/React.createElement(React.Fragment, null, "Auto-renews monthly until you cancel.", /*#__PURE__*/React.createElement("br", null), "Cancel anytime, with a 14-day EU refund if unused."))),
     /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8, paddingBottom: 24 } },
       /*#__PURE__*/React.createElement("span", { style: { ...T.hint, color: C.textSec, cursor: 'pointer' } }, "Privacy Policy"),
       /*#__PURE__*/React.createElement("span", { style: { ...T.hint, color: C.textSec, cursor: 'pointer' } }, "Terms of Service")))),
-  /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
-    label: "Start Premium",
-    onPress: () => { setIsPremium(true); go('plan'); }
-  })))
+  /*#__PURE__*/React.createElement(ScreenFooter, null, isPremium ? /*#__PURE__*/React.createElement(Btn, { label: "Manage subscription", ghost: true, onPress: () => showToast("Opening subscription settings…") }) : /*#__PURE__*/React.createElement(Btn, { label: "Start Premium", onPress: () => { setIsPremium(true); go('plan'); } })))
   // ─── OVERLAYS ─────────────────────────────────────────────────────────────────
 
   // Recipe Detail Bottom Sheet — stable height (sized to tallest tab), 3 tabs, no scroll
