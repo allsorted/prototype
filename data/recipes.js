@@ -644,53 +644,7 @@ const PLAN_B = [{
 }];
 
 // ─── Swap Pool — 6 alt meals (IDs 14–19) ─────────────────────────────────────────────
-const SWAP_POOL = [{
-  id: 14,
-  name: 'Thai Basil Stir Fry',
-  emoji: '🍜',
-  photo: PHOTO('1696906594893-e9995c4d7082'),
-  cuisine: 'Asian',
-  time: '20 min',
-  serves: 2,
-  protein: 28,
-  carbs: 18,
-  fat: 12,
-  fibre: 3,
-  allergens: ['soy'],
-  incompatible: ['vegan'],
-  ingredients: [{
-    n: 'Chicken breast',
-    q: '400g, sliced',
-    price: 4.49,
-    cat: 'Meat & Fish'
-  }, {
-    n: 'Thai basil',
-    q: 'large bunch',
-    price: 0.99,
-    cat: 'Vegetables & Fruit'
-  }, {
-    n: 'Soy sauce',
-    q: '2 tbsp',
-    price: 1.29,
-    cat: 'Pantry & Dry'
-  }, {
-    n: 'Oyster sauce',
-    q: '1 tbsp',
-    price: 1.69,
-    cat: 'Pantry & Dry'
-  }, {
-    n: 'Garlic',
-    q: '3, minced',
-    price: 0.35,
-    cat: 'Vegetables & Fruit'
-  }, {
-    n: 'Red chilli',
-    q: '1, sliced',
-    price: 0.49,
-    cat: 'Vegetables & Fruit'
-  }],
-  steps: ['Heat a wok over high heat until smoking.', 'Add oil, garlic and chilli. Stir fry 30 seconds.', 'Add chicken, cook 4–5 minutes until cooked through.', 'Add soy and oyster sauce, toss well for 1 minute.', 'Remove from heat, toss in thai basil leaves and serve over rice.']
-}, {
+const SWAP_POOL = [ {
   id: 15,
   name: 'Honey Garlic Prawns',
   emoji: '🦐',
@@ -777,47 +731,6 @@ const SWAP_POOL = [{
     cat: 'Pantry & Dry'
   }],
   steps: ['Sauté onion in butter until soft. Add mushrooms, cook until golden.', 'Add rice, stir for 2 minutes until grains look translucent.', 'Add wine, stir until absorbed.', 'Add stock one ladle at a time, stirring constantly for 18–20 minutes.', 'Remove from heat, stir in parmesan and a knob of butter. Rest 2 minutes.']
-}, {
-  id: 17,
-  name: 'Chicken Caesar Salad',
-  emoji: '🥗',
-  photo: PHOTO('1550304943-4f24f54ddde9'),
-  cuisine: 'Mediterranean',
-  time: '20 min',
-  serves: 2,
-  protein: 36,
-  carbs: 14,
-  fat: 18,
-  fibre: 4,
-  allergens: ['eggs', 'fish', 'gluten', 'milk'],
-  incompatible: ['veg', 'vegan', 'gf'],
-  ingredients: [{
-    n: 'Chicken breast',
-    q: '400g',
-    price: 4.49,
-    cat: 'Meat & Fish'
-  }, {
-    n: 'Romaine lettuce',
-    q: '1 head',
-    price: 1.29,
-    cat: 'Vegetables & Fruit'
-  }, {
-    n: 'Parmesan',
-    q: '40g, shaved',
-    price: 1.49,
-    cat: 'Dairy & Eggs'
-  }, {
-    n: 'Caesar dressing',
-    q: '4 tbsp',
-    price: 2.29,
-    cat: 'Pantry & Dry'
-  }, {
-    n: 'Croutons',
-    q: '50g',
-    price: 1.49,
-    cat: 'Pantry & Dry'
-  }],
-  steps: ['Season chicken and pan-fry over medium-high heat 5–6 minutes per side.', 'Rest chicken 3 minutes then slice.', 'Tear lettuce into a large bowl.', 'Toss with Caesar dressing until well coated.', 'Top with chicken slices, parmesan shavings and croutons.']
 }, {
   id: 18,
   name: 'Vegetable Tagine',
@@ -1066,37 +979,6 @@ const SWAP_POOL = [{
     'Add beans, tomatoes and stock. Stir well and bring to a boil.',
     'Reduce heat and simmer uncovered 20 minutes until sauce thickens.',
     'Season with salt and lime juice. Serve with rice, sour cream and fresh coriander.'
-  ]
-},{
-  id: 25,
-  name: 'Tofu & Vegetable Stir-fry',
-  emoji: '🥬',
-  photo: PHOTO('1564834724105-918b73d1b9e0'),
-  cuisine: 'Asian',
-  time: '20 min',
-  serves: 2,
-  protein: 18,
-  carbs: 22,
-  fat: 10,
-  fibre: 5,
-  allergens: ['soya', 'gluten'],
-  incompatible: ['lowcarb', 'gf'],
-  ingredients: [
-    { n: 'Firm tofu', q: '400g, cubed', price: 2.49, cat: 'Pantry & Dry' },
-    { n: 'Broccoli', q: '1 head, cut into florets', price: 1.29, cat: 'Vegetables & Fruit' },
-    { n: 'Red pepper', q: '1, sliced', price: 0.60, cat: 'Vegetables & Fruit' },
-    { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
-    { n: 'Garlic', q: '3 cloves', price: 0.50, cat: 'Vegetables & Fruit' },
-    { n: 'Fresh ginger', q: '2cm piece', price: 0.40, cat: 'Herbs & Spices' },
-    { n: 'Sesame oil', q: '1 tbsp', price: 0.80, cat: 'Pantry & Dry' },
-    { n: 'Spring onions', q: '4', price: 0.60, cat: 'Vegetables & Fruit' }
-  ],
-  steps: [
-    'Press tofu between paper towels for 10 minutes then cut into 2cm cubes.',
-    'Heat oil in a wok over very high heat. Fry tofu 5 minutes until golden. Set aside.',
-    'In same wok, stir-fry broccoli and pepper 3-4 minutes until just tender.',
-    'Add garlic and ginger. Cook 30 seconds. Return tofu to the wok.',
-    'Add soy sauce and sesame oil, toss 1 minute. Serve over rice with spring onions.'
   ]
 },{
   id: 26,
@@ -2130,7 +2012,332 @@ const SWAP_POOL = [{
     'Roast 12 minutes until fish is just opaque and flakes easily at the thickest part.',
     'Scatter fresh herbs over, drizzle with the roasting juices and serve with crusty bread or couscous.'
   ]
-}];
+}, {
+  id: 60,
+  name: 'Thai Red Curry with Tofu',
+  emoji: '🍛',
+  photo: PHOTO('1761038170236-1ed27c5ccbb4'),
+  cuisine: 'Asian',
+  time: '30 min',
+  serves: 4,
+  protein: 19,
+  carbs: 46,
+  fat: 17,
+  fibre: 6,
+  allergens: ['soy'],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Firm tofu', q: '400g, cubed', price: 2.49, cat: 'Pantry & Dry' },
+    { n: 'Thai red curry paste', q: '3 tbsp', price: 1.49, cat: 'Pantry & Dry' },
+    { n: 'Coconut milk', q: '400ml', price: 1.19, cat: 'Pantry & Dry' },
+    { n: 'Mixed peppers', q: '2, sliced', price: 1.30, cat: 'Vegetables & Fruit' },
+    { n: 'Mangetout', q: '150g', price: 1.20, cat: 'Vegetables & Fruit' },
+    { n: 'Jasmine rice', q: '300g', price: 0.90, cat: 'Pantry & Dry' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.40, cat: 'Herbs & Spices' },
+    { n: 'Lime', q: '1', price: 0.45, cat: 'Vegetables & Fruit' }
+  ],
+  steps: [
+    'Press the tofu for 10 minutes, then cut into cubes.',
+    'Cook the jasmine rice per packet instructions and keep warm.',
+    'Fry the red curry paste in a little oil for 1 minute until fragrant.',
+    'Pour in the coconut milk, bring to a gentle simmer, then add the tofu, peppers and mangetout.',
+    'Simmer 10 minutes until the vegetables are tender and the sauce has thickened.',
+    'Finish with a squeeze of lime, scatter with coriander and serve over the rice.'
+  ]
+}, {
+  id: 61,
+  name: 'Aloo Gobi',
+  emoji: '🍛',
+  photo: PHOTO('1764312538830-d67452377fed'),
+  cuisine: 'Indian',
+  time: '35 min',
+  serves: 4,
+  protein: 7,
+  carbs: 40,
+  fat: 9,
+  fibre: 7,
+  allergens: [],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Potatoes', q: '500g', price: 0.8, cat: 'Vegetables & Fruit' },
+    { n: 'Cauliflower', q: '1 head', price: 1.1, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Garlic', q: '3 cloves', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh ginger', q: '2cm', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Turmeric', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cut the potatoes and cauliflower into bite-sized chunks and florets.',
+    'Fry the onion, garlic and ginger in oil until soft and golden.',
+    'Stir in the cumin and turmeric for 30 seconds, then add the tomatoes.',
+    'Add the potatoes and cauliflower with a splash of water, cover and simmer 20 minutes until tender.',
+    'Season well, scatter with coriander and serve.'
+  ]
+},
+{
+  id: 62,
+  name: 'Rajma',
+  emoji: '🍛',
+  photo: PHOTO('1690401767645-595de0e0e5f8'),
+  cuisine: 'Indian',
+  time: '40 min',
+  serves: 4,
+  protein: 14,
+  carbs: 50,
+  fat: 8,
+  fibre: 12,
+  allergens: [],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Kidney beans', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
+    { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Garlic', q: '3 cloves', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh ginger', q: '2cm', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Garam masala', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Basmati rice', q: '300g', price: 0.9, cat: 'Pantry & Dry' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook the basmati rice per packet instructions and keep warm.',
+    'Fry the onion, garlic and ginger until soft.',
+    'Stir in the garam masala and cumin, then add the tomatoes and cook down for 5 minutes.',
+    'Add the kidney beans with a splash of water and simmer 15 minutes until thick.',
+    'Scatter with coriander and serve over the rice.'
+  ]
+},
+{
+  id: 63,
+  name: 'Miso Glazed Aubergine Bowl',
+  emoji: '🍆',
+  photo: PHOTO('1706288586340-17b39437aafc'),
+  cuisine: 'Asian',
+  time: '30 min',
+  serves: 4,
+  protein: 10,
+  carbs: 48,
+  fat: 10,
+  fibre: 6,
+  allergens: ['soy'],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Aubergines', q: '2', price: 1.6, cat: 'Vegetables & Fruit' },
+    { n: 'White miso paste', q: '2 tbsp', price: 0.9, cat: 'Pantry & Dry' },
+    { n: 'Soy sauce', q: '1 tbsp', price: 0.3, cat: 'Pantry & Dry' },
+    { n: 'Mirin', q: '1 tbsp', price: 0.4, cat: 'Pantry & Dry' },
+    { n: 'Short grain rice', q: '300g', price: 0.95, cat: 'Pantry & Dry' },
+    { n: 'Spring onions', q: '3', price: 0.5, cat: 'Vegetables & Fruit' },
+    { n: 'Sesame seeds', q: '1 tbsp', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Fresh ginger', q: '2cm', price: 0.3, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook the rice per packet instructions and keep warm.',
+    'Halve the aubergines and score the cut sides in a criss-cross.',
+    'Mix the miso, soy sauce and mirin into a glaze.',
+    'Roast the aubergines at 200°C for 20 minutes, brushing with the glaze halfway.',
+    'Top with spring onions and sesame seeds and serve over the rice.'
+  ]
+},
+{
+  id: 64,
+  name: 'Falafel & Hummus Bowl',
+  emoji: '🧆',
+  photo: PHOTO('1768812910769-d037b90aee77'),
+  cuisine: 'Middle Eastern',
+  time: '30 min',
+  serves: 4,
+  protein: 15,
+  carbs: 40,
+  fat: 18,
+  fibre: 10,
+  allergens: ['sesame'],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Chickpeas', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
+    { n: 'Garlic', q: '2 cloves', price: 0.2, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh parsley', q: 'handful', price: 0.4, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Hummus', q: '200g', price: 1.2, cat: 'Pantry & Dry' },
+    { n: 'Cucumber', q: 'half', price: 0.4, cat: 'Vegetables & Fruit' },
+    { n: 'Cherry tomatoes', q: '150g', price: 0.85, cat: 'Vegetables & Fruit' },
+    { n: 'Lemon', q: '1', price: 0.49, cat: 'Vegetables & Fruit' }
+  ],
+  steps: [
+    'Blitz the chickpeas with garlic, parsley and cumin into a coarse mix, then shape into small patties.',
+    'Bake the falafel at 200°C for 20 minutes until golden, turning halfway.',
+    'Dice the cucumber and halve the cherry tomatoes for the salad.',
+    'Spoon the hummus into bowls and add the salad and warm falafel.',
+    'Squeeze over lemon and serve.'
+  ]
+},
+{
+  id: 65,
+  name: 'Roasted Veg & Quinoa Bowl',
+  emoji: '🥗',
+  photo: PHOTO('1675092789086-4bd2b93ffc69'),
+  cuisine: 'Mediterranean',
+  time: '30 min',
+  serves: 4,
+  protein: 9,
+  carbs: 44,
+  fat: 14,
+  fibre: 9,
+  allergens: [],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Quinoa', q: '250g', price: 1.5, cat: 'Pantry & Dry' },
+    { n: 'Courgette', q: '1', price: 0.55, cat: 'Vegetables & Fruit' },
+    { n: 'Red pepper', q: '1', price: 0.55, cat: 'Vegetables & Fruit' },
+    { n: 'Red onion', q: '1', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Cherry tomatoes', q: '150g', price: 0.85, cat: 'Vegetables & Fruit' },
+    { n: 'Chickpeas', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Olive oil', q: '2 tbsp', price: 0.3, cat: 'Pantry & Dry' },
+    { n: 'Lemon', q: '1', price: 0.49, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh parsley', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook the quinoa per packet instructions and leave to cool slightly.',
+    'Chop the courgette, pepper and red onion, toss with olive oil and roast at 200°C for 25 minutes.',
+    'Halve the cherry tomatoes and drain the chickpeas.',
+    'Fold the roasted veg and chickpeas through the quinoa.',
+    'Finish with lemon, parsley and a drizzle of olive oil.'
+  ]
+},
+{
+  id: 66,
+  name: 'Chickpea & Apricot Tagine',
+  emoji: '🍲',
+  photo: PHOTO('1643019237176-8ae0859f1123'),
+  cuisine: 'North African',
+  time: '45 min',
+  serves: 4,
+  protein: 10,
+  carbs: 46,
+  fat: 9,
+  fibre: 11,
+  allergens: [],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Chickpeas', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
+    { n: 'Dried apricots', q: '100g', price: 0.9, cat: 'Pantry & Dry' },
+    { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Garlic', q: '2 cloves', price: 0.2, cat: 'Vegetables & Fruit' },
+    { n: 'Ras el hanout', q: '1 tbsp', price: 0.4, cat: 'Herbs & Spices' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Basmati rice', q: '300g', price: 0.9, cat: 'Pantry & Dry' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Fry the onion and garlic until soft, then stir in the ras el hanout and cumin.',
+    'Add the tomatoes and a splash of water and bring to a simmer.',
+    'Stir in the chickpeas and chopped apricots and simmer 25 minutes until thick.',
+    'Cook the rice per packet instructions while the tagine simmers.',
+    'Season well, scatter with coriander and serve over the rice.'
+  ]
+},
+{
+  id: 67,
+  name: 'Roasted Veg Fajita Bowl',
+  emoji: '🌯',
+  photo: PHOTO('1546906067-0e3c85626d56'),
+  cuisine: 'Mexican',
+  time: '30 min',
+  serves: 4,
+  protein: 12,
+  carbs: 48,
+  fat: 12,
+  fibre: 12,
+  allergens: [],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Mixed peppers', q: '3, sliced', price: 1.8, cat: 'Vegetables & Fruit' },
+    { n: 'Red onion', q: '1, sliced', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Black beans', q: '400g tin', price: 0.69, cat: 'Pantry & Dry' },
+    { n: 'Fajita seasoning', q: '2 tbsp', price: 0.5, cat: 'Herbs & Spices' },
+    { n: 'Brown rice', q: '300g', price: 0.95, cat: 'Pantry & Dry' },
+    { n: 'Avocado', q: '1', price: 0.89, cat: 'Vegetables & Fruit' },
+    { n: 'Lime', q: '1', price: 0.45, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh coriander', q: 'handful', price: 0.4, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook the brown rice per packet instructions and keep warm.',
+    'Slice the peppers and onion and toss with the fajita seasoning.',
+    'Roast or pan-fry the peppers and onion until charred at the edges.',
+    'Warm the black beans through.',
+    'Build bowls with rice, beans and peppers, then top with avocado, lime and coriander.'
+  ]
+},
+{
+  id: 68,
+  name: 'Sweet Potato & Peanut Stew',
+  emoji: '🥜',
+  photo: PHOTO('1598973442811-c68a55ba84d5'),
+  cuisine: 'African',
+  time: '40 min',
+  serves: 4,
+  protein: 13,
+  carbs: 46,
+  fat: 18,
+  fibre: 9,
+  allergens: ['peanuts'],
+  incompatible: ['lowcarb'],
+  ingredients: [
+    { n: 'Sweet potato', q: '600g', price: 1.2, cat: 'Vegetables & Fruit' },
+    { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Peanut butter', q: '3 tbsp', price: 0.6, cat: 'Pantry & Dry' },
+    { n: 'Garlic', q: '2 cloves', price: 0.2, cat: 'Vegetables & Fruit' },
+    { n: 'Fresh ginger', q: '2cm', price: 0.3, cat: 'Herbs & Spices' },
+    { n: 'Spinach', q: '100g', price: 0.8, cat: 'Vegetables & Fruit' },
+    { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
+    { n: 'Basmati rice', q: '300g', price: 0.9, cat: 'Pantry & Dry' }
+  ],
+  steps: [
+    'Cook the basmati rice per packet instructions and keep warm.',
+    'Fry the onion, garlic and ginger until soft.',
+    'Add the tomatoes, peanut butter and a mugful of water and stir into a smooth sauce.',
+    'Add the diced sweet potato and simmer 20 minutes until tender.',
+    'Stir through the spinach until wilted and serve over the rice.'
+  ]
+},
+{
+  id: 69,
+  name: 'Vegan Lentil Bolognese',
+  emoji: '🍝',
+  photo: PHOTO('1623243020684-9f8bcefe6e94'),
+  cuisine: 'Italian',
+  time: '35 min',
+  serves: 4,
+  protein: 18,
+  carbs: 58,
+  fat: 10,
+  fibre: 12,
+  allergens: ['gluten'],
+  incompatible: ['gf', 'lowcarb'],
+  ingredients: [
+    { n: 'Red lentils', q: '200g', price: 0.7, cat: 'Pantry & Dry' },
+    { n: 'Spaghetti', q: '400g', price: 0.75, cat: 'Pantry & Dry' },
+    { n: 'Chopped tomatoes', q: '400g tin', price: 0.55, cat: 'Pantry & Dry' },
+    { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
+    { n: 'Carrots', q: '2', price: 0.3, cat: 'Vegetables & Fruit' },
+    { n: 'Garlic', q: '2 cloves', price: 0.2, cat: 'Vegetables & Fruit' },
+    { n: 'Tomato purée', q: '2 tbsp', price: 0.3, cat: 'Pantry & Dry' },
+    { n: 'Mixed dried herbs', q: '1 tbsp', price: 0.2, cat: 'Herbs & Spices' }
+  ],
+  steps: [
+    'Cook the spaghetti per packet instructions.',
+    'Fry the onion, carrots and garlic until soft.',
+    'Stir in the tomato purée and dried herbs, then add the tomatoes and lentils.',
+    'Simmer 20 minutes with a splash of water until the lentils are tender and the sauce is rich.',
+    'Toss with the spaghetti and serve.'
+  ]
+}
+];
 
 // ─── All recipes merged ───────────────────────────────────────────────────────────────────
 const ALL_RECIPES = [...PLAN_A, ...PLAN_B, ...SWAP_POOL];
