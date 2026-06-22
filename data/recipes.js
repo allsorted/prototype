@@ -58,7 +58,7 @@ const PLAN_A = [{
   fat: 12,
   fibre: 4,
   allergens: ['fish', 'gluten'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [{
     n: 'Smoked salmon',
     q: '200g',
@@ -191,7 +191,7 @@ const PLAN_A = [{
   fat: 11,
   fibre: 12,
   allergens: ['mustard', 'celery'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [{
     n: 'Chickpeas',
     q: '2 × 400g tins',
@@ -288,7 +288,7 @@ const PLAN_A = [{
   fat: 22,
   fibre: 3,
   allergens: ['gluten', 'milk'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [{
     n: 'Whole chicken',
     q: '1.6 kg',
@@ -383,7 +383,7 @@ const PLAN_B = [{
   fat: 18,
   fibre: 4,
   allergens: ['gluten'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [{
     n: 'Beef mince',
     q: '500g',
@@ -429,7 +429,7 @@ const PLAN_B = [{
   fat: 22,
   fibre: 3,
   allergens: ['gluten', 'milk', 'eggs'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [{
     n: 'Chicken thighs',
     q: '600g, diced',
@@ -475,7 +475,7 @@ const PLAN_B = [{
   fat: 10,
   fibre: 4,
   allergens: ['fish'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [{
     n: 'Cod fillet',
     q: '2 × 180g',
@@ -562,7 +562,7 @@ const PLAN_B = [{
   fat: 22,
   fibre: 4,
   allergens: ['gluten', 'milk', 'eggs'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [{
     n: 'Beef mince',
     q: '500g',
@@ -608,7 +608,7 @@ const PLAN_B = [{
   fat: 28,
   fibre: 3,
   allergens: [],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [{
     n: 'Pork belly',
     q: '1 kg',
@@ -698,7 +698,7 @@ const SWAP_POOL = [ {
   fat: 16,
   fibre: 4,
   allergens: ['milk'],
-  incompatible: ['vegan', 'gf'],
+  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [{
     n: 'Arborio rice',
     q: '320g',
@@ -744,7 +744,7 @@ const SWAP_POOL = [ {
   fat: 9,
   fibre: 8,
   allergens: ['celery'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [{
     n: 'Butternut squash',
     q: '1 small, cubed',
@@ -790,7 +790,7 @@ const SWAP_POOL = [ {
   fat: 8,
   fibre: 10,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [{
     n: 'Red lentils',
     q: '300g',
@@ -931,7 +931,7 @@ const SWAP_POOL = [ {
   fat: 16,
   fibre: 5,
   allergens: ['milk', 'gluten'],
-  incompatible: ['vegan', 'gf', 'lowcarb'],
+  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Mixed mushrooms', q: '500g, sliced', price: 3.49, cat: 'Vegetables & Fruit' },
     { n: 'Onion', q: '1 large, diced', price: 0.40, cat: 'Vegetables & Fruit' },
@@ -961,7 +961,7 @@ const SWAP_POOL = [ {
   fat: 6,
   fibre: 16,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Black beans', q: '2 x 400g tins, drained', price: 1.58, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '400g tin', price: 0.79, cat: 'Pantry & Dry' },
@@ -1086,7 +1086,7 @@ const SWAP_POOL = [ {
   fat: 10,
   fibre: 3,
   allergens: ['crustaceans', 'gluten', 'peanuts', 'eggs'],
-  incompatible: ['veg', 'vegan', 'lowcarb', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Raw king prawns', q: '200g', price: 4.99, cat: 'Meat & Fish' },
     { n: 'Flat rice noodles', q: '150g', price: 1.49, cat: 'Pantry & Dry' },
@@ -1150,7 +1150,7 @@ const SWAP_POOL = [ {
   fat: 8,
   fibre: 7,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Basmati rice', q: '300g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Mixed vegetables', q: '400g (carrot, peas, cauliflower)', price: 2.49, cat: 'Vegetables & Fruit' },
@@ -1242,7 +1242,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 3,
   allergens: ['fish', 'gluten', 'sesame'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Salmon fillets', q: '2 x 180g', price: 7.49, cat: 'Meat & Fish' },
     { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
@@ -1274,7 +1274,7 @@ const SWAP_POOL = [ {
   fat: 8,
   fibre: 5,
   allergens: ['gluten'],
-  incompatible: ['gf', 'lowcarb'],
+  incompatible: ['gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Penne pasta', q: '350g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Chopped tomatoes', q: '2 x 400g tins', price: 1.58, cat: 'Pantry & Dry' },
@@ -1331,7 +1331,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 4,
   allergens: ['gluten', 'eggs', 'milk'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Chicken breast', q: '2, butterflied', price: 5.49, cat: 'Meat & Fish' },
     { n: 'Breadcrumbs', q: '80g', price: 0.99, cat: 'Pantry & Dry' },
@@ -1361,7 +1361,7 @@ const SWAP_POOL = [ {
   fat: 22,
   fibre: 4,
   allergens: ['gluten', 'milk', 'tree nuts'],
-  incompatible: ['vegan', 'gf', 'lowcarb'],
+  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Fresh gnocchi', q: '500g', price: 2.49, cat: 'Pantry & Dry' },
     { n: 'Gorgonzola', q: '100g, crumbled', price: 2.99, cat: 'Dairy & Eggs' },
@@ -1390,7 +1390,7 @@ const SWAP_POOL = [ {
   fat: 20,
   fibre: 5,
   allergens: ['gluten', 'milk', 'tree nuts'],
-  incompatible: ['vegan', 'gf', 'lowcarb'],
+  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Fusilli or penne', q: '250g', price: 1.29, cat: 'Pantry & Dry' },
     { n: 'Basil pesto', q: '4 tbsp', price: 2.29, cat: 'Pantry & Dry' },
@@ -1477,7 +1477,7 @@ const SWAP_POOL = [ {
   fat: 16,
   fibre: 3,
   allergens: ['soy', 'sesame', 'gluten'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Sirloin steak', q: '300g, very thinly sliced', price: 7.99, cat: 'Meat & Fish' },
     { n: 'Soy sauce', q: '3 tbsp', price: 0.60, cat: 'Pantry & Dry' },
@@ -1508,7 +1508,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 6,
   allergens: ['soy', 'sesame', 'eggs'],
-  incompatible: ['vegan', 'gf'],
+  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Short grain rice', q: '200g', price: 1.49, cat: 'Pantry & Dry' },
     { n: 'Mixed veg (carrot, courgette, spinach, mushrooms)', q: '300g', price: 2.49, cat: 'Vegetables & Fruit' },
@@ -1537,7 +1537,7 @@ const SWAP_POOL = [ {
   fat: 20,
   fibre: 4,
   allergens: ['milk'],
-  incompatible: ['vegan', 'lowcarb'],
+  incompatible: ['vegan', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Paneer', q: '400g, cubed', price: 3.49, cat: 'Dairy & Eggs' },
     { n: 'Tikka masala paste', q: '3 tbsp', price: 1.49, cat: 'Pantry & Dry' },
@@ -1628,7 +1628,7 @@ const SWAP_POOL = [ {
   fat: 12,
   fibre: 14,
   allergens: ['milk'],
-  incompatible: ['vegan', 'lowcarb'],
+  incompatible: ['vegan', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Whole black lentils (urad dal)', q: '250g', price: 1.99, cat: 'Pantry & Dry' },
     { n: 'Kidney beans', q: '400g tin, drained', price: 0.79, cat: 'Pantry & Dry' },
@@ -1659,7 +1659,7 @@ const SWAP_POOL = [ {
   fat: 12,
   fibre: 4,
   allergens: ['gluten'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Chicken breast', q: '400g, sliced', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Mixed peppers', q: '2, sliced', price: 1.29, cat: 'Vegetables & Fruit' },
@@ -1689,7 +1689,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 5,
   allergens: ['gluten', 'milk'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [
     { n: 'Beef mince', q: '400g', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Taco seasoning', q: '2 tbsp', price: 0.99, cat: 'Herbs & Spices' },
@@ -1719,7 +1719,7 @@ const SWAP_POOL = [ {
   fat: 12,
   fibre: 4,
   allergens: ['fish', 'gluten', 'eggs', 'milk'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [
     { n: 'White fish fillet (cod or haddock)', q: '300g', price: 4.99, cat: 'Meat & Fish' },
     { n: 'Taco seasoning', q: '1 tbsp', price: 0.60, cat: 'Herbs & Spices' },
@@ -1748,7 +1748,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 6,
   allergens: ['eggs', 'milk'],
-  incompatible: ['vegan', 'lowcarb'],
+  incompatible: ['vegan', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Eggs', q: '4', price: 1.60, cat: 'Dairy & Eggs' },
     { n: 'Chopped tomatoes', q: '2 × 400g tins', price: 1.58, cat: 'Pantry & Dry' },
@@ -1844,7 +1844,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 5,
   allergens: ['milk', 'gluten'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [
     { n: 'Chicken breast', q: '400g, cubed', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Lemon', q: '1, zest and juice', price: 0.40, cat: 'Vegetables & Fruit' },
@@ -1905,7 +1905,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 3,
   allergens: ['crustaceans', 'milk'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'lowcarb'],
   ingredients: [
     { n: 'Raw king prawns', q: '250g', price: 5.99, cat: 'Meat & Fish' },
     { n: 'Arborio rice', q: '200g', price: 1.99, cat: 'Pantry & Dry' },
@@ -1967,7 +1967,7 @@ const SWAP_POOL = [ {
   fat: 16,
   fibre: 5,
   allergens: ['gluten'],
-  incompatible: ['veg', 'vegan', 'gf'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Pork sausages', q: '8', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Back bacon', q: '200g, thick cut', price: 2.99, cat: 'Meat & Fish' },
@@ -2025,7 +2025,7 @@ const SWAP_POOL = [ {
   fat: 17,
   fibre: 6,
   allergens: ['soy'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Firm tofu', q: '400g, cubed', price: 2.49, cat: 'Pantry & Dry' },
     { n: 'Thai red curry paste', q: '3 tbsp', price: 1.49, cat: 'Pantry & Dry' },
@@ -2057,7 +2057,7 @@ const SWAP_POOL = [ {
   fat: 9,
   fibre: 7,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Potatoes', q: '500g', price: 0.8, cat: 'Vegetables & Fruit' },
     { n: 'Cauliflower', q: '1 head', price: 1.1, cat: 'Vegetables & Fruit' },
@@ -2090,7 +2090,7 @@ const SWAP_POOL = [ {
   fat: 8,
   fibre: 12,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Kidney beans', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
     { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
@@ -2123,7 +2123,7 @@ const SWAP_POOL = [ {
   fat: 10,
   fibre: 6,
   allergens: ['soy'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Aubergines', q: '2', price: 1.6, cat: 'Vegetables & Fruit' },
     { n: 'White miso paste', q: '2 tbsp', price: 0.9, cat: 'Pantry & Dry' },
@@ -2155,7 +2155,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 10,
   allergens: ['sesame'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Chickpeas', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
     { n: 'Garlic', q: '2 cloves', price: 0.2, cat: 'Vegetables & Fruit' },
@@ -2187,7 +2187,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 9,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Quinoa', q: '250g', price: 1.5, cat: 'Pantry & Dry' },
     { n: 'Courgette', q: '1', price: 0.55, cat: 'Vegetables & Fruit' },
@@ -2220,7 +2220,7 @@ const SWAP_POOL = [ {
   fat: 9,
   fibre: 11,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Chickpeas', q: '2 × 400g tins', price: 1.1, cat: 'Pantry & Dry' },
     { n: 'Dried apricots', q: '100g', price: 0.9, cat: 'Pantry & Dry' },
@@ -2253,7 +2253,7 @@ const SWAP_POOL = [ {
   fat: 12,
   fibre: 12,
   allergens: [],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Mixed peppers', q: '3, sliced', price: 1.8, cat: 'Vegetables & Fruit' },
     { n: 'Red onion', q: '1, sliced', price: 0.3, cat: 'Vegetables & Fruit' },
@@ -2285,7 +2285,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 9,
   allergens: ['peanuts'],
-  incompatible: ['lowcarb'],
+  incompatible: ['lowcarb', 'protein'],
   ingredients: [
     { n: 'Sweet potato', q: '600g', price: 1.2, cat: 'Vegetables & Fruit' },
     { n: 'Onion', q: '1, diced', price: 0.25, cat: 'Vegetables & Fruit' },
@@ -2318,7 +2318,7 @@ const SWAP_POOL = [ {
   fat: 10,
   fibre: 12,
   allergens: ['gluten'],
-  incompatible: ['gf', 'lowcarb'],
+  incompatible: ['gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Red lentils', q: '200g', price: 0.7, cat: 'Pantry & Dry' },
     { n: 'Spaghetti', q: '400g', price: 0.75, cat: 'Pantry & Dry' },
