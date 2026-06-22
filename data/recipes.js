@@ -698,7 +698,7 @@ const SWAP_POOL = [ {
   fat: 16,
   fibre: 4,
   allergens: ['milk'],
-  incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
+  incompatible: ['vegan', 'lowcarb', 'protein'],
   ingredients: [{
     n: 'Arborio rice',
     q: '320g',
@@ -1447,7 +1447,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 1,
   allergens: ['fish', 'soy', 'gluten'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'gf'],
   ingredients: [
     { n: 'Salmon fillets', q: '2 × 180g', price: 7.49, cat: 'Meat & Fish' },
     { n: 'White miso paste', q: '2 tbsp', price: 2.49, cat: 'Pantry & Dry' },
@@ -1507,7 +1507,7 @@ const SWAP_POOL = [ {
   carbs: 56,
   fat: 14,
   fibre: 6,
-  allergens: ['soy', 'sesame', 'eggs'],
+  allergens: ['soy', 'sesame', 'eggs', 'gluten'],
   incompatible: ['vegan', 'gf', 'lowcarb', 'protein'],
   ingredients: [
     { n: 'Short grain rice', q: '200g', price: 1.49, cat: 'Pantry & Dry' },
@@ -1689,7 +1689,7 @@ const SWAP_POOL = [ {
   fat: 18,
   fibre: 5,
   allergens: ['gluten', 'milk'],
-  incompatible: ['veg', 'vegan', 'lowcarb'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Beef mince', q: '400g', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Taco seasoning', q: '2 tbsp', price: 0.99, cat: 'Herbs & Spices' },
@@ -1719,7 +1719,7 @@ const SWAP_POOL = [ {
   fat: 12,
   fibre: 4,
   allergens: ['fish', 'gluten', 'eggs', 'milk'],
-  incompatible: ['veg', 'vegan', 'lowcarb'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'White fish fillet (cod or haddock)', q: '300g', price: 4.99, cat: 'Meat & Fish' },
     { n: 'Taco seasoning', q: '1 tbsp', price: 0.60, cat: 'Herbs & Spices' },
@@ -1780,7 +1780,7 @@ const SWAP_POOL = [ {
   fat: 24,
   fibre: 3,
   allergens: ['gluten', 'milk'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'gf'],
   ingredients: [
     { n: 'Lamb mince', q: '400g', price: 5.99, cat: 'Meat & Fish' },
     { n: 'Ground cumin', q: '1 tsp', price: 0.2, cat: 'Herbs & Spices' },
@@ -1844,7 +1844,7 @@ const SWAP_POOL = [ {
   fat: 14,
   fibre: 5,
   allergens: ['milk', 'gluten'],
-  incompatible: ['veg', 'vegan', 'lowcarb'],
+  incompatible: ['veg', 'vegan', 'gf', 'lowcarb'],
   ingredients: [
     { n: 'Chicken breast', q: '400g, cubed', price: 4.49, cat: 'Meat & Fish' },
     { n: 'Lemon', q: '1, zest and juice', price: 0.40, cat: 'Vegetables & Fruit' },
@@ -1875,7 +1875,7 @@ const SWAP_POOL = [ {
   fat: 22,
   fibre: 5,
   allergens: ['gluten'],
-  incompatible: ['veg', 'vegan'],
+  incompatible: ['veg', 'vegan', 'gf'],
   ingredients: [
     { n: 'Chicken thighs', q: '6, bone-in skin-on', price: 6.99, cat: 'Meat & Fish' },
     { n: 'Chorizo', q: '150g, sliced', price: 2.99, cat: 'Meat & Fish' },
