@@ -5419,32 +5419,47 @@ function AllSortedPrototype() {
     })).filter(m => m.active);
     const mealCount = sourceMeals.length;
     const cuisines = [...new Set(sourceMeals.map(m => m.cuisine).filter(Boolean))];
-    const avgProtein = mealCount ? Math.round(sourceMeals.reduce((s, m) => s + (m.protein || 0), 0) / mealCount) : 0;
     const avgTime = mealCount ? Math.round(sourceMeals.reduce((s, m) => s + parseInt(m.time || '0'), 0) / mealCount) : 0;
     const quickMeals = sourceMeals.filter(m => parseInt(m.time || '0') <= 25).map(m => m.name.split(' ')[0]);
     const bigMeal = sourceMeals.length ? sourceMeals.reduce((a, b) => parseInt(a.time || '0') > parseInt(b.time || '0') ? a : b) : null;
     const hasStew = sourceMeals.some(m => m.name.includes('Stew') || m.name.includes('Pie'));
-    const chips = [avgProtein > 0 && { label: "~".concat(avgProtein, "g protein"), color: C.protein }, cuisines.length > 0 && { label: "".concat(cuisines.length, " cuisine").concat(cuisines.length !== 1 ? 's' : ''), color: C.fat }, avgTime > 0 && { label: "~".concat(avgTime, " min"), color: C.fibre }].filter(Boolean);
+    const weekCost = historyInsightWeek ? (historyInsightWeek.estimate || 0) : totalEstimate;
+    const costPerDinner = mealCount ? Math.round(weekCost / mealCount) : 0;
+    // Three lenses on the week — variety / effort / cost. Coloured number names the
+    // dimension (not a macro); plain figures (no ~) read as the summary they are.
+    const chips = [
+      cuisines.length > 0 && { num: "".concat(cuisines.length), label: cuisines.length !== 1 ? 'cuisines' : 'cuisine', color: '#42A5F5' },
+      avgTime > 0 && { num: "".concat(avgTime), label: 'min', color: '#FF9800' },
+      costPerDinner > 0 && { num: "\u20AC".concat(costPerDinner), label: 'dinner', color: '#B388FF' }
+    ].filter(Boolean);
+
+    // Plain one-line read of the week — no quotes, no numbers (chips own those), no dots.
+    const topCuisine = (() => {
+      const cnt = {};
+      sourceMeals.forEach(m => { if (m.cuisine) cnt[m.cuisine] = (cnt[m.cuisine] || 0) + 1; });
+      return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '';
+    })();
+    const summaryLine = (cuisines.length >= 3 ? 'A varied' : 'A focused') + (topCuisine ? ", ".concat(topCuisine, "-leaning") : '') + ' week.';
 
     // Tips: from past week data if history mode, otherwise derived from current meals
     const tips = historyInsightWeek?.tips || [bigMeal && parseInt(bigMeal.time || '0') >= 55 ? {
       icon: '🍖',
-      text: "".concat(bigMeal.name, " takes ").concat(bigMeal.time, " \u2014 worth starting early. Clear your Sunday afternoon.")
+      text: "".concat(bigMeal.name, " takes ").concat(bigMeal.time, " \u2014 worth starting early. Clear your Sunday afternoon."), em: bigMeal.time
     } : {
       icon: '⚡',
-      text: "All ".concat(mealCount, " meals are under 35 mins this week. Good for busy evenings.")
+      text: "All ".concat(mealCount, " meals are under 35 mins this week. Good for busy evenings."), em: 'under 35 mins'
     }, quickMeals.length >= 2 ? {
       icon: '⚡',
-      text: "Quick wins: ".concat(quickMeals.slice(0, 3).join(', '), " \u2014 all under 25 mins. Save them for late nights.")
+      text: "Quick wins: ".concat(quickMeals.slice(0, 3).join(', '), " \u2014 all under 25 mins. Save them for late nights."), em: 'under 25 mins'
     } : {
       icon: '🍳',
-      text: 'Steady week — no meal goes beyond 45 mins if you prep the veg in advance.'
+      text: 'Steady week — no meal goes beyond 45 mins if you prep the veg in advance.', em: 'Steady week'
     }, hasStew ? {
       icon: '🥘',
-      text: 'Stews and pies improve overnight. Make the full portion and refrigerate half for next day.'
+      text: 'Stews and pies improve overnight. Make the full portion and refrigerate half for next day.', em: 'improve overnight'
     } : {
       icon: '🛒',
-      text: 'Ingredients overlap well — a single mid-week shop should cover everything.'
+      text: 'Ingredients overlap well — a single mid-week shop should cover everything.', em: 'a single mid-week shop'
     }].filter(Boolean);
     const subtitle = historyInsightWeek ? pastWeekRange(historyInsightWeek.delivery) : "".concat(mealCount, " meals this week");
     return /*#__PURE__*/React.createElement("div", {
@@ -5509,15 +5524,17 @@ function AllSortedPrototype() {
     }, chips.map(c => /*#__PURE__*/React.createElement("span", {
       key: c.label,
       style: {
-        background: c.color + '22',
-        color: c.color,
+        border: "0.5px solid ".concat(C.border),
         borderRadius: 20,
-        padding: '4px 12px',
-        fontSize: 12,
-        fontWeight: 600,
+        padding: '4px 11px',
+        fontSize: 13,
         whiteSpace: 'nowrap'
       }
-    }, c.label))), isPremium ? /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", {
+      style: { color: c.color, fontWeight: 600 }
+    }, c.num), " ", /*#__PURE__*/React.createElement("span", {
+      style: { color: C.textHint }
+    }, c.label)))), isPremium ? /*#__PURE__*/React.createElement("div", {
       style: {
         padding: '14px 20px 28px',
         display: 'flex',
@@ -5528,35 +5545,45 @@ function AllSortedPrototype() {
       style: {
         ...T.body,
         color: C.textSec,
-        lineHeight: 1.65,
-        fontStyle: 'italic'
+        lineHeight: 1.6
       }
-    }, "\"", cuisines.length >= 3 ? 'A varied week' : 'An Irish-leaning week', " \u2014 ", cuisines.filter((_, i) => i < 3).join(', '), ". ~", avgProtein, "g protein \u00b7 ~", avgTime, " mins to cook.\""), /*#__PURE__*/React.createElement("div", {
+    }, summaryLine), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexDirection: 'column',
         gap: 12
       }
-    }, tips.map((t, i) => /*#__PURE__*/React.createElement("div", {
-      key: i,
-      style: {
-        display: 'flex',
-        gap: 12,
-        alignItems: 'flex-start'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 18,
-        flexShrink: 0,
-        marginTop: 1
-      }
-    }, t.icon), /*#__PURE__*/React.createElement("span", {
-      style: {
-        ...T.body,
-        color: C.textSec,
-        lineHeight: 1.6
-      }
-    }, t.text))))) : /*#__PURE__*/React.createElement("div", {
+    }, tips.map((t, i) => {
+      const idx = t.em ? t.text.indexOf(t.em) : -1;
+      const content = idx >= 0 ? [t.text.slice(0, idx), /*#__PURE__*/React.createElement("span", {
+        key: 'em',
+        style: { color: C.accent, fontWeight: 600 }
+      }, t.em), t.text.slice(idx + t.em.length)] : t.text;
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          display: 'flex',
+          gap: 11,
+          alignItems: 'flex-start'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 9,
+          height: 9,
+          borderRadius: '50%',
+          background: C.accent,
+          border: "1.5px solid ".concat(C.accent),
+          flexShrink: 0,
+          marginTop: 6
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...T.body,
+          color: C.textSec,
+          lineHeight: 1.6
+        }
+      }, content));
+    }))) : /*#__PURE__*/React.createElement("div", {
       style: {
         padding: '14px 20px 28px',
         position: 'relative'
