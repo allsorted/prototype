@@ -4213,39 +4213,7 @@ function AllSortedPrototype() {
       ...T.hint,
       fontWeight: 700
     }
-  }, "Upgrade")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.bgSec,
-      borderRadius: 12,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '12px 16px'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      ...T.body,
-      color: C.text
-    }
-  }, "Notifications"), /*#__PURE__*/React.createElement(Toggle, {
-    on: notifs,
-    onToggle: () => setNotifs(p => !p)
-  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "History"), /*#__PURE__*/React.createElement("div", {
-    style: { background: C.bgSec, borderRadius: 12, overflow: 'hidden' }
-  }, /*#__PURE__*/React.createElement("div", {
-    onClick: () => go('pastweeks'),
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: "1px solid ".concat(C.border), cursor: 'pointer' }
-  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Past Weeks"),
-  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")),
-  /*#__PURE__*/React.createElement("div", {
-    onClick: isPremium ? () => go('disliked') : undefined,
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: isPremium ? 'pointer' : 'default', opacity: isPremium ? 1 : 0.4 }
-  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Disliked recipes"),
-  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
+  }, "Upgrade")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Preferences"), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.bgSec,
       borderRadius: 12,
@@ -4259,7 +4227,7 @@ function AllSortedPrototype() {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '12px 16px',
-      borderBottom: i < a.length - 1 ? "1px solid ".concat(C.border) : 'none',
+      borderBottom: "1px solid ".concat(C.border),
       cursor: 'pointer'
     }
   }, /*#__PURE__*/React.createElement("span", {
@@ -4272,7 +4240,18 @@ function AllSortedPrototype() {
       color: C.textHint,
       fontSize: 18
     }
-  }, "\u203A"))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Support"), /*#__PURE__*/React.createElement("div", {
+  }, "\u203A"))), /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' } }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Notifications"), /*#__PURE__*/React.createElement(Toggle, { on: notifs, onToggle: () => setNotifs(p => !p) })))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "History"), /*#__PURE__*/React.createElement("div", {
+    style: { background: C.bgSec, borderRadius: 12, overflow: 'hidden' }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => go('pastweeks'),
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: "1px solid ".concat(C.border), cursor: 'pointer' }
+  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Past Weeks"),
+  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")),
+  /*#__PURE__*/React.createElement("div", {
+    onClick: isPremium ? () => go('disliked') : undefined,
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: isPremium ? 'pointer' : 'default', opacity: isPremium ? 1 : 0.4 }
+  }, /*#__PURE__*/React.createElement("span", { style: { ...T.body, color: C.text } }, "Disliked recipes"),
+  /*#__PURE__*/React.createElement("span", { style: { color: C.textHint, fontSize: 18 } }, "\u203A")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "Support"), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.bgSec,
       borderRadius: 12,
