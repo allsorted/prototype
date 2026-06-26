@@ -404,7 +404,7 @@ const STORES = [{
 }, {
   id: 'SuperValu',
   label: 'SuperValu',
-  sub: 'Click & Collect + some delivery',
+  sub: 'Delivery + Click & Collect',
   emoji: '🏬'
 }];
 const CUISINE_COLOR = {
@@ -5093,41 +5093,32 @@ function AllSortedPrototype() {
     }, s.emoji), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
-        minWidth: 0
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
+        minWidth: 0,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8
+        flexDirection: 'column'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.body,
         color: C.text
       }
-    }, s.label)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        marginTop: 2
-      }
-    }, /*#__PURE__*/React.createElement("span", {
+    }, s.label), /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.meta,
-        color: C.textSec
+        color: C.textSec,
+        marginTop: 2,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }
-    }, s.sub), /*#__PURE__*/React.createElement("span", {
+    }, s.sub)), /*#__PURE__*/React.createElement("span", {
       style: {
         ...T.meta,
         color: storePick === s.id ? C.accent : C.textSec,
         fontWeight: storePick === s.id ? 700 : 400,
         flexShrink: 0
       }
-    }, "~\u20AC", storeEsts[s.id].toFixed(2))))))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+    }, "~\u20AC", storeEsts[s.id].toFixed(2))))), /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: C.textHint, textAlign: 'center', padding: '2px 20px 12px', lineHeight: 1.5 } }, "Prices are estimates — your store confirms the final total at checkout."), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
       label: storePick ? "Shop at ".concat(storePick) : 'Choose a store',
       active: !!storePick,
       onPress: commitAndClose
