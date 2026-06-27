@@ -223,7 +223,7 @@ const buildShoppingList = (resolvedMeals, dayOn) => {
 };
 const PAST_WEEKS = [{
   id: 1,
-  delivery: new Date(2026, 4, 12),
+  delivery: (() => { const d = new Date(); d.setHours(0,0,0,0); const day = d.getDay(); d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day) - 7); return d; })(),
   estimate: 54.20,
   // Mon 12 May
   meals: [{
@@ -279,68 +279,6 @@ const PAST_WEEKS = [{
   }, {
     icon: '🥘',
     text: 'Beef stew and shepherd\'s pie improve overnight. Make the full batch and refrigerate half for next day.'
-  }]
-}, {
-  id: 2,
-  delivery: new Date(2026, 4, 5),
-  estimate: 47.80,
-  // Mon 5 May
-  meals: [{
-    name: 'Thai Basil Stir Fry',
-    emoji: '🍜',
-    cuisine: 'Asian',
-    time: '20 min',
-    protein: 22
-  }, {
-    name: 'Honey Garlic Prawns',
-    emoji: '🦐',
-    cuisine: 'Asian',
-    time: '20 min',
-    protein: 28
-  }, {
-    name: 'Irish Lamb Stew',
-    emoji: '🥘',
-    photo: PHOTO('1664741662725-bd131742b7b7'),
-    cuisine: 'Irish',
-    time: '50 min',
-    protein: 35
-  }, {
-    name: 'Baked Hake',
-    emoji: '🐟',
-    photo: PHOTO('1728963228980-71c76178616a'),
-    cuisine: 'Irish',
-    time: '22 min',
-    protein: 30
-  }, {
-    name: 'Lentil Dahl',
-    emoji: '🥣',
-    cuisine: 'Asian',
-    time: '35 min',
-    protein: 16
-  }, {
-    name: 'Chicken Pot Pie',
-    emoji: '🥧',
-    photo: PHOTO('1650917331384-1fd06afa3230'),
-    cuisine: 'Irish',
-    time: '55 min',
-    protein: 32
-  }, {
-    name: 'Sunday Roast Beef',
-    emoji: '🥩',
-    photo: PHOTO('1635897411141-7bd2b9c6ab16'),
-    cuisine: 'Irish',
-    time: '90 min',
-    protein: 48
-  }],
-  tips: [{
-    icon: '🌏',
-    text: 'Good variety — Asian flavours mid-week, Irish classics at the weekend. Nice balance.'
-  }, {
-    icon: '🦐',
-    text: 'Prawns and baked hake are both under 22 mins — save these for your busiest weeknights.'
-  }, {
-    icon: '🛒',
-    text: 'Garlic, ginger and soy sauce appear across multiple dishes — buy once, use three times.'
   }]
 }];
 const SHARE_APPS = [{
@@ -6215,18 +6153,6 @@ function AllSortedPrototype() {
           lineHeight: 1
         }
       }, "\u2039"),
-      badge: /*#__PURE__*/React.createElement("span", {
-        style: {
-          background: 'transparent',
-          border: "1px solid ".concat(C.border),
-          borderRadius: 20,
-          padding: '3px 10px',
-          fontSize: 12,
-          fontWeight: 600,
-          color: C.textSec,
-          whiteSpace: 'nowrap'
-        }
-      }, monthLabel),
       center: /*#__PURE__*/React.createElement("span", {
         style: {
           ...T.logo,
