@@ -667,7 +667,7 @@ const ScreenHeader = ({
   alt: "AllSorted",
   style: { height: 22, width: 'auto', objectFit: 'contain' }
 })), badge ? /*#__PURE__*/React.createElement("div", {
-  style: { position: 'absolute', left: 44, right: '65%', top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }
+  style: { position: 'absolute', left: 44, right: '62%', top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }
 }, badge) : null, /*#__PURE__*/React.createElement("div", {
   style: {
     zIndex: 1,
@@ -3521,7 +3521,7 @@ function AllSortedPrototype() {
         ...T.heading,
         color: C.text
       }
-    }, "Week sorted \u2713"), /*#__PURE__*/React.createElement("div", {
+    }, "Week sorted"), /*#__PURE__*/React.createElement("div", {
       style: {
         ...T.hint,
         color: C.textSec,
@@ -3534,10 +3534,22 @@ function AllSortedPrototype() {
         gap: 10,
         width: '100%'
       }
-    }, /*#__PURE__*/React.createElement(TapRow, {
-      label: "\uD83D\uDCE4  Share your week",
-      onPress: () => setShowShareSheet(true)
-    }))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowShareSheet(true),
+      style: {
+        alignSelf: 'center',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        background: C.bgEl,
+        border: 'none',
+        borderRadius: 999,
+        padding: '11px 22px',
+        cursor: 'pointer',
+        ...T.bodyMed,
+        color: C.textSec
+      }
+    }, "\uD83D\uDCE4  Share your week"))), /*#__PURE__*/React.createElement(ScreenFooter, null, /*#__PURE__*/React.createElement(Btn, {
       label: "Back to plan",
       onPress: () => { screenStack.current = []; go('plan', { back: true }); }
     }))), showReuseConfirm && /*#__PURE__*/React.createElement("div", {
