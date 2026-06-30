@@ -181,22 +181,29 @@ const STAPLES = [{
 }];
 
 // ─── Dynamic shopping list ──────────────────────────────────────────────────────────────
-const buildShoppingList = (resolvedMeals, dayOn) => {
+const buildShoppingList = (resolvedMeals, dayOn, portScale = 2) => {
   const CAT_ORDER = ['Meat & Fish', 'Vegetables & Fruit', 'Dairy & Eggs', 'Pantry & Dry'];
   const merged = {};
   for (let i = 0; i < 7; i++) {
     if (!dayOn[i]) continue;
     const recipe = resolvedMeals[i];
-    for (const ing of (recipe && recipe.ingredients) || []) {
+    if (!recipe) continue;
+    // 1 serving = q / serves, so this meal for the household = q * portScale / serves.
+    // Scale per-recipe BEFORE merging — recipes serve 2/4/6, so a flat factor over-buys.
+    const f = portScale / (recipe.serves || 2);
+    for (const ing of recipe.ingredients || []) {
+      const sPrice = ing.price * f;
       if (merged[ing.n]) {
         merged[ing.n] = {
           ...merged[ing.n],
           count: merged[ing.n].count + 1,
-          price: merged[ing.n].price + ing.price
+          price: merged[ing.n].price + sPrice
         };
       } else {
         merged[ing.n] = {
           ...ing,
+          q: scaleQty(ing.q, f),
+          price: sPrice,
           count: 1
         };
       }
@@ -892,13 +899,12 @@ const scaleQty = (q, factor) => {
 const ItemRow = ({
   item,
   excluded,
-  portScale,
   onToggle
 }) => {
   const isExcl = !!excluded[item.n];
-  const factor = Math.max(portScale / 2, 0.5);
-  const scaledPrice = item.price ? (item.price * factor).toFixed(2) : null;
-  const displayQty = scaleQty(item.q, factor); // live-scales g/ml/counts; leaves units unchanged
+  // Quantities + prices are already scaled to the household in buildShoppingList (per recipe serves).
+  const scaledPrice = item.price ? item.price.toFixed(2) : null;
+  const displayQty = item.q;
   return /*#__PURE__*/React.createElement("div", {
     onClick: () => onToggle(item.n),
     style: {
@@ -1592,7 +1598,7 @@ function AllSortedPrototype() {
   const toggleAllergen = id => setAllergens(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   // All shopping items + any staples the user has tapped to include
-  const totalEstimate = [...Object.values(buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn)).flat(), ...STAPLES].filter(item => !excluded[item.n]).reduce((sum, item) => sum + item.price * Math.max(portScale / 2, 0.5), 0);
+  const totalEstimate = [...Object.values(buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn, portScale)).flat(), ...STAPLES].filter(item => !excluded[item.n]).reduce((sum, item) => sum + item.price, 0);
 
   // ─── Delivery day date helpers ─────────────────────────────────────────────
   const cardDate = i => {
@@ -2722,7 +2728,7 @@ function AllSortedPrototype() {
 
   // 8. Shopping List
   const ShopScreen = () => {
-    const shopping = buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn);
+    const shopping = buildShoppingList(mealOrder.map((_, k) => getMealAtDay(k)), dayOn, portScale);
     const allItems = [...Object.values(shopping).flat(), ...STAPLES];
     const includedCount = allItems.filter(item => !excluded[item.n]).length;
     const fillAvailable = fillUsed < maxFills;
@@ -2905,7 +2911,6 @@ function AllSortedPrototype() {
     }, /*#__PURE__*/React.createElement(ItemRow, {
       item: item,
       excluded: excluded,
-      portScale: portScale,
       onToggle: toggleItem
     })))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -2935,7 +2940,6 @@ function AllSortedPrototype() {
     }, /*#__PURE__*/React.createElement(ItemRow, {
       item: item,
       excluded: excluded,
-      portScale: portScale,
       onToggle: toggleItem
     }))))), /*#__PURE__*/React.createElement("div", {
       style: {
