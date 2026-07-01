@@ -232,6 +232,7 @@ const PAST_WEEKS = [{
   id: 1,
   delivery: (() => { const d = new Date(); d.setHours(0,0,0,0); const day = d.getDay(); d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day) - 7); return d; })(),
   estimate: 54.20,
+  portScale: 2,
   // Mon 12 May
   meals: [{
     name: 'Garlic Butter Chicken',
@@ -1610,11 +1611,6 @@ function AllSortedPrototype() {
     const d = cardDate(i);
     return "".concat(DAY_SHORT[d.getDay()].toUpperCase(), " ").concat(d.getDate());
   };
-  const monthBadge = () => {
-    const s = weekStartDay.getMonth(),
-      e = cardDate(6).getMonth();
-    return s === e ? MONTH_SHORT[s] : "".concat(MONTH_SHORT[s], " \xB7 ").concat(MONTH_SHORT[e]);
-  };
   const weekRange = () => {
     const s = weekStartDay,
       e = cardDate(6);
@@ -2569,7 +2565,7 @@ function AllSortedPrototype() {
         idx: i,
         isDragging: isDragging,
         hasConflict: hasConflict,
-        onOpen: () => { setActiveRecipe({ meal: meal, mealIdx: meal.id }); setRecipeTab('ingredients'); setShowRecipe(true); }
+        onOpen: () => { setActiveRecipe({ meal: meal, mealIdx: meal.id, portions: isFrozen ? portScale : null }); setRecipeTab('ingredients'); setShowRecipe(true); }
       }), hasSwaps && /*#__PURE__*/React.createElement("div", {
         style: {
           position: 'absolute',
@@ -4535,6 +4531,11 @@ function AllSortedPrototype() {
     const meal = activeRecipe.meal;
     const mealIdx = activeRecipe.mealIdx;
     const fromSaved = activeRecipe.fromSaved;
+    // Ingredient scaling: planning shows 1 serving (q / serves); a frozen plan or a past
+    // week shows the chosen portions (q * portions / serves). `portions` is captured when
+    // the recipe is opened (current portScale if frozen, the stored snapshot for history).
+    const ingFactor = (activeRecipe.portions != null ? activeRecipe.portions : 1) / (meal.serves || 2);
+    const servingLabel = activeRecipe.portions != null ? 'your portions' : '1 serving';
 
     // Dish-level conflict (same as the card's red border + ! badge). Per-ingredient
     // red-flagging is GATED on this: a compatible dish shows no red lines, even if a
@@ -4771,7 +4772,7 @@ function AllSortedPrototype() {
         color: C.textSec,
         padding: '10px 0 6px'
       }
-    }, "Ingredients \xB7 1 serving"), (meal.ingredients || INGREDIENTS).map((ing, i) => { const bad = dishConflict && ingredientConflicts(ing.n, allergens, selectedDiet); return /*#__PURE__*/React.createElement("div", {
+    }, "Ingredients \xB7 ".concat(servingLabel)), (meal.ingredients || INGREDIENTS).map((ing, i) => { const bad = dishConflict && ingredientConflicts(ing.n, allergens, selectedDiet); return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
         display: 'flex',
@@ -4793,7 +4794,7 @@ function AllSortedPrototype() {
         marginLeft: 12,
         flexShrink: 0
       }
-    }, ing.q)); }), /*#__PURE__*/React.createElement("div", {
+    }, scaleQty(ing.q, ingFactor))); }), /*#__PURE__*/React.createElement("div", {
       style: {
         height: 16
       }
@@ -6246,7 +6247,7 @@ function AllSortedPrototype() {
         idx: i,
         isDragging: false,
         hasConflict: false,
-        onOpen: () => { setActiveRecipe({ meal: fullMeal, mealIdx: 0 }); setRecipeTab('ingredients'); setShowRecipe(true); }
+        onOpen: () => { setActiveRecipe({ meal: fullMeal, mealIdx: 0, portions: historyWeek.portScale }); setRecipeTab('ingredients'); setShowRecipe(true); }
       }));
     })), /*#__PURE__*/React.createElement(ScreenFooter, {
       center: true
